@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#080911">
+    <script>
+      (() => {
+        let displayTone = "bright";
+        let secondsVisibility = "hide";
+
+        try {
+          displayTone = localStorage.getItem("retreat-display-tone-v2") === "dim" ? "dim" : "bright";
+          secondsVisibility = localStorage.getItem("retreat-seconds-visibility-v2") === "show" ? "show" : "hide";
+        } catch (_) {
+          // Storage can be unavailable in privacy-restricted browsing contexts.
+        }
+
+        document.documentElement.dataset.displayTone = displayTone;
+        document.documentElement.dataset.secondsVisibility = secondsVisibility;
+      })();
+    </script>
+    <title>Simply Always Awake Online Retreat — Live Schedule</title>
+    <meta
+      name="description"
+      content="See what is happening now during the Simply Always Awake Online Retreat and view the full schedule in your local time zone."
+    >
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <p class="retreat-title">
+        Simply Always Awake Online Retreat
+        <span aria-hidden="true">·</span>
+        <span>July 8–12, 2026</span>
+      </p>
+      <time id="local-clock" class="header-clock" datetime=""></time>
+    </header>
+
+    <div class="display-controls">
+      <div class="seconds-control" role="group" aria-labelledby="seconds-control-label" hidden>
+        <span id="seconds-control-label" class="control-label">Seconds</span>
+        <button type="button" data-seconds-visibility="show" aria-pressed="true">Show</button>
+        <button type="button" data-seconds-visibility="hide" aria-pressed="false">Hide</button>
+      </div>
+      <div class="display-tone-control" role="group" aria-label="Page display brightness">
+        <button type="button" data-display-tone="bright" aria-pressed="true">Bright</button>
+        <button type="button" data-display-tone="dim" aria-pressed="false">Dim</button>
+      </div>
+    </div>
+
+    <script>
+      (() => {
+        const tone = document.documentElement.dataset.displayTone;
+        const seconds = document.documentElement.dataset.secondsVisibility;
+
+        document.body.dataset.displayTone = tone;
+        document.querySelectorAll("[data-display-tone]").forEach((button) => {
+          button.setAttribute("aria-pressed", String(button.dataset.displayTone === tone));
+        });
+        document.querySelectorAll("[data-seconds-visibility]").forEach((button) => {
+          button.setAttribute("aria-pressed", String(button.dataset.secondsVisibility === seconds));
+        });
+      })();
+    </script>
+
+    <main>
+      <section class="live-panel" aria-labelledby="current-title">
+        <div class="live-content">
+          <p id="status-label" class="section-label">Happening now</p>
+          <h1 id="current-title">Loading…</h1>
+          <p id="current-window" class="current-window"></p>
+
+          <div class="countdown-wrap">
+            <p id="countdown" class="countdown" role="timer" aria-atomic="true">--:--:--</p>
+            <p id="countdown-note" class="countdown-note">
+              until <strong id="next-title">the next session</strong>
+              <span id="next-window"></span>
+            </p>
+          </div>
+
+          <a class="schedule-link" href="#schedule">
+            View the schedule for today
+            <span aria-hidden="true">↓</span>
+          </a>
+        </div>
+      </section>
+
+      <section id="schedule" class="schedule-panel" aria-labelledby="schedule-title">
+        <div class="schedule-heading">
+          <div>
+            <p id="schedule-day" class="section-label">Today</p>
+            <h2 id="schedule-title">Today’s schedule</h2>
+          </div>
+          <p id="source-note" class="source-note"></p>
+        </div>
+
+        <div id="schedule-list" class="schedule-list"></div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
