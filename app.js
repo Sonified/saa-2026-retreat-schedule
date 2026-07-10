@@ -777,6 +777,7 @@ function createRecordingPlayerFrame(videoId, title, resumeTime) {
 
 function initializeRecordingDialog() {
   let trigger = null;
+  let restoreTriggerFocus = false;
   let playerFocusGuard = null;
   let closeTimer = null;
   let progressTimer = null;
@@ -832,6 +833,7 @@ function initializeRecordingDialog() {
 
     event.preventDefault();
     trigger = event.target.closest(".session-recording-link, .session-recording-resume") || link;
+    restoreTriggerFocus = event.detail === 0;
     activeVideoId = videoId;
     const currentPlayerSession = ++playerSession;
 
@@ -943,8 +945,13 @@ function initializeRecordingDialog() {
     activeVideoId = null;
     elements.recordingPlayerMount.replaceChildren();
     document.body.classList.remove("has-open-recording");
-    trigger?.focus();
+    if (restoreTriggerFocus) {
+      trigger?.focus();
+    } else {
+      trigger?.blur();
+    }
     trigger = null;
+    restoreTriggerFocus = false;
   });
 
   window.addEventListener("pagehide", saveProgress);
