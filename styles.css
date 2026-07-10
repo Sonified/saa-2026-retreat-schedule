@@ -947,9 +947,70 @@ body[data-display-tone="dim"] .session-row.is-next::before {
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.72);
 }
 
+.recording-dialog:focus {
+  outline: none;
+}
+
+.recording-dialog[open] {
+  animation: recording-dialog-enter 340ms ease-out;
+}
+
 .recording-dialog::backdrop {
   background: rgba(3, 4, 9, 0.84);
   backdrop-filter: blur(5px);
+}
+
+.recording-dialog[open]::backdrop {
+  animation: recording-backdrop-enter 260ms ease-out;
+}
+
+.recording-dialog.is-closing {
+  pointer-events: none;
+  animation: recording-dialog-exit 260ms ease-in forwards;
+}
+
+.recording-dialog.is-closing::backdrop {
+  animation: recording-backdrop-exit 260ms ease-in forwards;
+}
+
+@keyframes recording-dialog-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes recording-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes recording-dialog-exit {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes recording-backdrop-exit {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
 }
 
 .recording-dialog-header {
@@ -964,11 +1025,15 @@ body[data-display-tone="dim"] .session-row.is-next::before {
 .recording-dialog-header h2 {
   margin: 0;
   overflow: hidden;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: inherit;
   font-size: 1.1rem;
   font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.recording-dialog-header form {
+  margin: 0;
 }
 
 .recording-dialog-close {
@@ -1083,6 +1148,11 @@ body[data-display-tone="dim"] .session-row.is-next::before {
 
   .session-row.is-active::after {
     transition: none;
+  }
+
+  .recording-dialog[open],
+  .recording-dialog[open]::backdrop {
+    animation: none;
   }
 
   .schedule-day-panel[aria-hidden="false"] .session-row::before {

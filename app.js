@@ -605,9 +605,20 @@ function getYouTubeVideoId(url) {
 
 function initializeRecordingDialog() {
   let trigger = null;
+  let playerFocusGuard = null;
+  let closeTimer = null;
 
   const closeDialog = () => {
-    if (elements.recordingDialog.open) elements.recordingDialog.close();
+    if (!elements.recordingDialog.open
+      || elements.recordingDialog.classList.contains("is-closing")) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      elements.recordingDialog.close();
+      return;
+    }
+
+    elements.recordingDialog.classList.add("is-closing");
+    closeTimer = setTimeout(() => elements.recordingDialog.close(), 260);
   };
 
   elements.scheduleList.addEventListener("click", (event) => {
@@ -623,37 +634,44 @@ function initializeRecordingDialog() {
     const sessionName = link.textContent.trim();
     const sourceDate = link.closest(".schedule-day-panel")?.dataset.sourceDate;
     const dayIndex = RETREAT_DATES.findIndex((retreatDay) => retreatDay.date === sourceDate);
-    const firstDayEvent = events.find((scheduleEvent) => scheduleEvent.sourceDate === sourceDate);
-    const dateLabel = firstDayEvent ? formatTabDate(firstDayEvent.start) : "";
-    const titleParts = [
-      dayIndex >= 0 ? `Day ${dayIndex + 1}` : "",
-      dateLabel,
-      sessionName,
-    ].filter(Boolean);
-    const recordingTitle = titleParts.join(" – ");
+    const recordingTitle = dayIndex >= 0
+      ? `Day ${dayIndex + 1}: ${sessionName}`
+      : sessionName;
 
     elements.recordingDialogTitle.textContent = recordingTitle;
     elements.recordingPlayerFrame.title = `${recordingTitle} recording`;
     elements.recordingPlayerFrame.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1&rel=0`;
     document.body.classList.add("has-open-recording");
     elements.recordingDialog.showModal();
-    elements.recordingDialogClose.focus();
+    elements.recordingDialog.focus({ preventScroll: true });
+    clearInterval(playerFocusGuard);
+    playerFocusGuard = setInterval(() => {
+      if (document.fullscreenElement) return;
+      if (document.activeElement === elements.recordingPlayerFrame) {
+        elements.recordingDialog.focus({ preventScroll: true });
+      }
+    }, 30);
   });
 
-  elements.recordingDialogClose.addEventListener("click", closeDialog);
+  window.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !elements.recordingDialog.open) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closeDialog();
+  }, { capture: true });
+  elements.recordingDialogClose.form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    closeDialog();
+  });
   elements.recordingDialog.addEventListener("click", (event) => {
     if (event.target === elements.recordingDialog) closeDialog();
   });
-  window.addEventListener("blur", () => {
-    if (!elements.recordingDialog.open) return;
-
-    setTimeout(() => {
-      if (document.activeElement === elements.recordingPlayerFrame) {
-        elements.recordingDialogClose.focus({ preventScroll: true });
-      }
-    }, 0);
-  });
   elements.recordingDialog.addEventListener("close", () => {
+    clearTimeout(closeTimer);
+    closeTimer = null;
+    elements.recordingDialog.classList.remove("is-closing");
+    clearInterval(playerFocusGuard);
+    playerFocusGuard = null;
     elements.recordingPlayerFrame.removeAttribute("src");
     document.body.classList.remove("has-open-recording");
     trigger?.focus();
