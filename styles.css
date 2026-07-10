@@ -413,29 +413,114 @@ body[data-display-tone="dim"] .timer-link:focus-visible span {
   transition: color 240ms ease;
 }
 
-.schedule-list {
+.schedule-carousel {
+  position: relative;
+}
+
+.schedule-viewport {
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: none;
-  width: calc(100% + 12px);
-  margin-left: -12px;
-  padding-left: 12px;
-  scroll-padding-left: 12px;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   touch-action: pan-x pan-y pinch-zoom;
 }
 
-.schedule-list::-webkit-scrollbar {
+.schedule-viewport::-webkit-scrollbar {
   display: none;
 }
 
+.schedule-list {
+  width: calc(100% + 12px);
+  margin-left: -12px;
+  padding-left: 12px;
+}
+
+.schedule-step {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  display: grid;
+  width: 48px;
+  height: 44px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--faint);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.72;
+  place-items: center;
+  transform: translateY(-50%);
+  transition: color 160ms ease, opacity 160ms ease;
+}
+
+.schedule-step span {
+  width: 11px;
+  height: 11px;
+  border-top: 1px solid currentColor;
+  border-right: 1px solid currentColor;
+}
+
+.schedule-step-previous span {
+  transform: rotate(-135deg);
+}
+
+.schedule-step-next span {
+  transform: rotate(45deg);
+}
+
+body[data-display-tone="bright"] .schedule-step:not(:disabled) {
+  color: var(--text);
+  opacity: 0.9;
+}
+
+.schedule-step-previous {
+  left: -60px;
+}
+
+.schedule-step-next {
+  right: -60px;
+}
+
+.schedule-step:hover,
+.schedule-step:focus-visible {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.schedule-step:focus-visible {
+  border-radius: 6px;
+  outline: 2px solid var(--active);
+  outline-offset: -4px;
+}
+
+.schedule-step:disabled {
+  color: var(--faint);
+  cursor: default;
+  opacity: 0.28;
+}
+
+@media (max-width: 1220px) {
+  .schedule-step-previous {
+    left: -24px;
+  }
+
+  .schedule-step-next {
+    right: -24px;
+  }
+}
+
 .schedule-tabs {
-  position: relative;
+  position: sticky;
+  z-index: 3;
+  left: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-start;
+  width: 100%;
   margin-bottom: 26px;
   overscroll-behavior-x: none;
   touch-action: pan-x pan-y pinch-zoom;
@@ -456,7 +541,7 @@ body[data-display-tone="dim"] .timer-link:focus-visible span {
 
 .day-tab-selection {
   position: absolute;
-  z-index: 0;
+  z-index: 2;
   top: 0;
   left: 0;
   border: 1px solid var(--accent);
@@ -495,7 +580,7 @@ body[data-display-tone="dim"] .timer-link:focus-visible span {
 }
 
 .day-tab[aria-selected="true"] {
-  border-color: transparent;
+  border-color: var(--line);
   background: transparent;
   color: var(--text);
 }
@@ -543,7 +628,7 @@ body[data-display-tone="dim"] .day-tab:hover {
 }
 
 body[data-display-tone="dim"] .day-tab[aria-selected="true"] {
-  border-color: transparent;
+  border-color: rgba(255, 255, 255, 0.065);
   background: transparent;
   color: #a3a0aa;
 }
@@ -876,17 +961,14 @@ body[data-display-tone="dim"] .session-row.is-next::before {
   .schedule-tabs {
     display: flex;
     flex-wrap: nowrap;
-    margin-right: -18px;
-    overflow-x: auto;
-    padding-right: 18px;
     padding-bottom: 4px;
-    scroll-snap-type: x proximity;
-    scrollbar-width: thin;
+    gap: 4px;
   }
 
   .day-tab {
-    flex: 0 0 104px;
-    scroll-snap-align: start;
+    flex: 1 1 0;
+    padding-right: 6px;
+    padding-left: 6px;
   }
 
   .session-row {

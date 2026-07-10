@@ -98,19 +98,41 @@
           <p id="source-note" class="source-note"></p>
         </div>
 
-        <div
-          id="schedule-tabs"
-          class="schedule-tabs"
-          role="tablist"
-          aria-label="Retreat days"
-        ></div>
+        <div class="schedule-carousel">
+          <button
+            id="schedule-previous"
+            class="schedule-step schedule-step-previous"
+            type="button"
+            aria-label="Previous retreat day"
+          >
+            <span aria-hidden="true"></span>
+          </button>
 
-        <div
-          id="schedule-list"
-          class="schedule-list"
-          role="tabpanel"
-          aria-live="polite"
-        ></div>
+          <div id="schedule-viewport" class="schedule-viewport">
+            <div
+              id="schedule-tabs"
+              class="schedule-tabs"
+              role="tablist"
+              aria-label="Retreat days"
+            ></div>
+
+            <div
+              id="schedule-list"
+              class="schedule-list"
+              role="tabpanel"
+              aria-live="polite"
+            ></div>
+          </div>
+
+          <button
+            id="schedule-next"
+            class="schedule-step schedule-step-next"
+            type="button"
+            aria-label="Next retreat day"
+          >
+            <span aria-hidden="true"></span>
+          </button>
+        </div>
       </section>
     </main>
 
