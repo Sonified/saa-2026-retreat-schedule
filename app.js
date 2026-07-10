@@ -357,7 +357,7 @@ function getDefaultRetreatDate(now = new Date()) {
     : firstDate;
 }
 
-function positionScheduleTabIndicator(dayPosition, { animate = false } = {}) {
+function positionScheduleTabIndicator(dayPosition) {
   const indicator = elements.scheduleTabs.querySelector(".day-tab-selection");
   const tabs = Array.from(elements.scheduleTabs.querySelectorAll("[role=tab]"));
   if (!indicator || tabs.length === 0 || !Number.isFinite(dayPosition)) return;
@@ -373,13 +373,12 @@ function positionScheduleTabIndicator(dayPosition, { animate = false } = {}) {
   const width = firstTab.offsetWidth + ((finalTab.offsetWidth - firstTab.offsetWidth) * progress);
   const height = firstTab.offsetHeight + ((finalTab.offsetHeight - firstTab.offsetHeight) * progress);
 
-  indicator.classList.toggle("is-animated", animate);
   indicator.style.width = `${width}px`;
   indicator.style.height = `${height}px`;
   indicator.style.transform = `translate3d(${left}px, ${top}px, 0)`;
 }
 
-function renderScheduleTabs(currentSourceDate, animate = false) {
+function renderScheduleTabs(currentSourceDate, updateIndicator = true) {
   let tabs = Array.from(elements.scheduleTabs.querySelectorAll("[role=tab]"));
 
   if (tabs.length !== RETREAT_DATES.length) {
@@ -443,36 +442,50 @@ function renderScheduleTabs(currentSourceDate, animate = false) {
     }
   });
 
-  positionScheduleTabIndicator(getSelectedRetreatDayIndex(), { animate });
+  if (updateIndicator) {
+    positionScheduleTabIndicator(getSelectedRetreatDayIndex());
+  }
 }
 
 function getSelectedRetreatDayIndex() {
   return RETREAT_DATES.findIndex((retreatDay) => retreatDay.date === selectedRetreatDate);
 }
 
-function setScheduleTrackPosition(dayIndex, { animate = true, dragOffset = null } = {}) {
-  const track = elements.scheduleList.querySelector(".schedule-track");
-  if (!track || dayIndex < 0) return;
-
-  track.classList.toggle("is-animated", animate);
-
-  if (dragOffset === null) {
-    track.style.transform = `translate3d(${-dayIndex * 100}%, 0, 0)`;
-    return;
-  }
-
-  const panelWidth = track.getBoundingClientRect().width;
-  track.style.transform = `translate3d(${(-dayIndex * panelWidth) + dragOffset}px, 0, 0)`;
+function getScheduleTrack() {
+  return elements.scheduleList.querySelector(".schedule-track");
 }
 
-function updateScheduleSelection(now = new Date(), animate = false) {
+function setScheduleTrackPosition(dayIndex, { animate = true } = {}) {
+  const track = getScheduleTrack();
+  if (!track || dayIndex < 0) return;
+
+  const panelWidth = track.getBoundingClientRect().width;
+  if (!panelWidth) return;
+
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  elements.scheduleList.scrollTo({
+    left: dayIndex * panelWidth,
+    behavior: animate && !reduceMotion ? "smooth" : "auto",
+  });
+
+  if (!animate || reduceMotion) {
+    positionScheduleTabIndicator(dayIndex);
+  }
+}
+
+function updateScheduleSelection(
+  now = new Date(),
+  animate = false,
+  moveTrack = true,
+  updateIndicator = false
+) {
   const currentSourceDate = formatDateKeyInZone(now, SOURCE_TIME_ZONE);
   const selectedDayIndex = getSelectedRetreatDayIndex();
   const selectedEvents = events.filter((event) => event.sourceDate === selectedRetreatDate);
 
   if (selectedDayIndex < 0 || selectedEvents.length === 0) return;
 
-  renderScheduleTabs(currentSourceDate, animate);
+  renderScheduleTabs(currentSourceDate, updateIndicator);
   elements.scheduleList.setAttribute("aria-labelledby", `schedule-tab-${selectedDayIndex + 1}`);
   elements.scheduleTitle.textContent = "Retreat schedule";
   elements.sourceNote.innerHTML = `Times shown in <strong>${localTimeZone}</strong>.`;
@@ -483,18 +496,28 @@ function updateScheduleSelection(now = new Date(), animate = false) {
     panel.toggleAttribute("inert", !isSelected);
   });
 
-  setScheduleTrackPosition(selectedDayIndex, { animate });
+  if (moveTrack) setScheduleTrackPosition(selectedDayIndex, { animate });
   updateScheduleHighlights(findStatus(now), now);
 }
 
-function selectRetreatDay(sourceDate, { animate = true, focusTab = false } = {}) {
+function selectRetreatDay(sourceDate, {
+  animate = true,
+  focusTab = false,
+  moveTrack = true,
+  updateIndicator = false,
+} = {}) {
   const nextDayIndex = RETREAT_DATES.findIndex((retreatDay) => retreatDay.date === sourceDate);
   if (nextDayIndex < 0) return;
 
   const selectionChanged = sourceDate !== selectedRetreatDate;
   selectedRetreatDate = sourceDate;
   followsCurrentRetreatDay = selectedRetreatDate === getDefaultRetreatDate();
-  updateScheduleSelection(new Date(), animate && selectionChanged);
+  updateScheduleSelection(
+    new Date(),
+    animate && selectionChanged,
+    moveTrack,
+    updateIndicator
+  );
 
   const selectedTab = elements.scheduleTabs.querySelector(
     `[data-source-date="${selectedRetreatDate}"]`
@@ -519,170 +542,58 @@ function selectRetreatDay(sourceDate, { animate = true, focusTab = false } = {})
   }
 }
 
-function initializeScheduleGestures() {
-  const gestureTargets = [elements.scheduleTabs, elements.scheduleList];
-  let gesture = null;
-  let suppressClicksUntil = 0;
-  let wheelDistance = 0;
-  let wheelResetTimer = null;
-  let wheelLockedUntil = 0;
+function initializeScheduleScrolling() {
+  let scrollEndTimer = null;
+  let lastPanelWidth = 0;
 
-  const clearGesture = () => {
-    document.body.classList.remove("is-swiping-schedule");
-    gesture = null;
+  const syncSelectionToScroll = () => {
+    clearTimeout(scrollEndTimer);
+    scrollEndTimer = null;
+
+    const panelWidth = getScheduleTrack()?.getBoundingClientRect().width || 0;
+    if (!panelWidth) return;
+
+    const dayIndex = Math.min(
+      RETREAT_DATES.length - 1,
+      Math.max(0, Math.round(elements.scheduleList.scrollLeft / panelWidth))
+    );
+
+    if (dayIndex === getSelectedRetreatDayIndex()) {
+      positionScheduleTabIndicator(dayIndex);
+      return;
+    }
+
+    selectRetreatDay(RETREAT_DATES[dayIndex].date, {
+      animate: false,
+      moveTrack: false,
+      updateIndicator: true,
+    });
   };
 
-  const snapToSelectedDay = () => {
-    const selectedDayIndex = getSelectedRetreatDayIndex();
-    setScheduleTrackPosition(selectedDayIndex, { animate: true });
-    positionScheduleTabIndicator(selectedDayIndex, { animate: true });
-  };
+  elements.scheduleList.addEventListener("scroll", () => {
+    const panelWidth = getScheduleTrack()?.getBoundingClientRect().width || 0;
+    if (panelWidth) {
+      positionScheduleTabIndicator(elements.scheduleList.scrollLeft / panelWidth);
+    }
 
-  gestureTargets.forEach((target) => {
-    target.addEventListener("pointerdown", (event) => {
-      if (!event.isPrimary || event.button > 0) return;
+    clearTimeout(scrollEndTimer);
+    scrollEndTimer = setTimeout(syncSelectionToScroll, 100);
+  }, { passive: true });
 
-      gesture = {
-        pointerId: event.pointerId,
-        target,
-        startX: event.clientX,
-        startY: event.clientY,
-        startTime: performance.now(),
-        dayIndex: getSelectedRetreatDayIndex(),
-        dragging: false,
-        deltaX: 0,
-      };
-    });
-
-    target.addEventListener("pointermove", (event) => {
-      if (!gesture || gesture.pointerId !== event.pointerId) return;
-
-      const deltaX = event.clientX - gesture.startX;
-      const deltaY = event.clientY - gesture.startY;
-      const horizontalDistance = Math.abs(deltaX);
-      const verticalDistance = Math.abs(deltaY);
-
-      if (!gesture.dragging) {
-        if (verticalDistance > 10 && verticalDistance > horizontalDistance) {
-          clearGesture();
-          return;
-        }
-
-        if (horizontalDistance < 9 || horizontalDistance <= verticalDistance * 1.15) return;
-
-        gesture.dragging = true;
-        gesture.target.setPointerCapture?.(event.pointerId);
-        document.body.classList.add("is-swiping-schedule");
-      }
-
-      event.preventDefault();
-      gesture.deltaX = deltaX;
-
-      const atFirstDay = gesture.dayIndex === 0 && deltaX > 0;
-      const atFinalDay = gesture.dayIndex === RETREAT_DATES.length - 1 && deltaX < 0;
-      const resistedOffset = atFirstDay || atFinalDay ? deltaX * 0.24 : deltaX;
-
-      setScheduleTrackPosition(gesture.dayIndex, {
-        animate: false,
-        dragOffset: resistedOffset,
-      });
-
-      const panelWidth = elements.scheduleList
-        .querySelector(".schedule-track")
-        ?.getBoundingClientRect().width;
-
-      if (panelWidth) {
-        positionScheduleTabIndicator(
-          gesture.dayIndex - (resistedOffset / panelWidth),
-          { animate: false }
-        );
-      }
-    });
-
-    const finishGesture = (event, cancelled = false) => {
-      if (!gesture || gesture.pointerId !== event.pointerId) return;
-
-      const completedGesture = gesture;
-      const wasDragging = completedGesture.dragging;
-      const elapsed = Math.max(1, performance.now() - completedGesture.startTime);
-      const velocity = Math.abs(completedGesture.deltaX) / elapsed;
-      const distanceThreshold = Math.min(110, elements.scheduleList.clientWidth * 0.16);
-      const shouldAdvance = !cancelled && wasDragging && (
-        Math.abs(completedGesture.deltaX) >= distanceThreshold || velocity >= 0.48
-      );
-
-      clearGesture();
-
-      if (!wasDragging) return;
-
-      suppressClicksUntil = performance.now() + 400;
-
-      const direction = completedGesture.deltaX < 0 ? 1 : -1;
-      const nextDayIndex = shouldAdvance
-        ? Math.min(RETREAT_DATES.length - 1, Math.max(0, completedGesture.dayIndex + direction))
-        : completedGesture.dayIndex;
-
-      if (nextDayIndex === completedGesture.dayIndex) {
-        snapToSelectedDay();
-        return;
-      }
-
-      selectRetreatDay(RETREAT_DATES[nextDayIndex].date, { animate: true });
-    };
-
-    target.addEventListener("pointerup", (event) => finishGesture(event));
-    target.addEventListener("pointercancel", (event) => finishGesture(event, true));
-    target.addEventListener("wheel", (event) => {
-      const horizontalDistance = Math.abs(event.deltaX);
-      const verticalDistance = Math.abs(event.deltaY);
-
-      if (horizontalDistance < 3 || horizontalDistance <= verticalDistance * 1.15) return;
-
-      event.preventDefault();
-
-      const now = performance.now();
-      if (now < wheelLockedUntil) return;
-
-      wheelDistance += event.deltaX;
-      clearTimeout(wheelResetTimer);
-      wheelResetTimer = setTimeout(() => {
-        wheelDistance = 0;
-      }, 140);
-
-      if (Math.abs(wheelDistance) < 54) return;
-
-      const currentDayIndex = getSelectedRetreatDayIndex();
-      const direction = wheelDistance > 0 ? 1 : -1;
-      const nextDayIndex = Math.min(
-        RETREAT_DATES.length - 1,
-        Math.max(0, currentDayIndex + direction)
-      );
-
-      wheelDistance = 0;
-      wheelLockedUntil = now + 520;
-
-      if (nextDayIndex === currentDayIndex) {
-        snapToSelectedDay();
-        return;
-      }
-
-      selectRetreatDay(RETREAT_DATES[nextDayIndex].date, { animate: true });
-    }, { passive: false });
-    target.addEventListener("click", (event) => {
-      if (performance.now() >= suppressClicksUntil) return;
-      event.preventDefault();
-      event.stopPropagation();
-      suppressClicksUntil = 0;
-    }, true);
-  });
+  elements.scheduleList.addEventListener("scrollend", syncSelectionToScroll);
 
   elements.scheduleList.addEventListener("dragstart", (event) => {
     if (event.target.closest("a")) event.preventDefault();
   });
 
-  window.addEventListener("resize", () => {
-    positionScheduleTabIndicator(getSelectedRetreatDayIndex(), { animate: false });
+  const resizeObserver = new ResizeObserver(() => {
+    const panelWidth = getScheduleTrack()?.getBoundingClientRect().width || 0;
+    if (!panelWidth || Math.abs(panelWidth - lastPanelWidth) < 0.5) return;
+
+    lastPanelWidth = panelWidth;
+    setScheduleTrackPosition(getSelectedRetreatDayIndex(), { animate: false });
   });
+  resizeObserver.observe(elements.scheduleList);
 
   let verticalPageTarget = null;
   let verticalPageResetTimer = null;
@@ -740,7 +651,7 @@ function initializeScheduleGestures() {
     event.preventDefault();
 
     if (nextDayIndex === currentDayIndex) {
-      snapToSelectedDay();
+      setScheduleTrackPosition(currentDayIndex, { animate: true });
       return;
     }
 
@@ -970,7 +881,7 @@ function renderSchedule(now = new Date()) {
     </div>
   `;
 
-  updateScheduleSelection(now, false);
+  updateScheduleSelection(now, false, true, false);
 }
 
 function getRemainingProgress(start, end, now) {
@@ -1017,6 +928,6 @@ function updateScheduleHighlights(status, now = new Date()) {
   });
 }
 
-initializeScheduleGestures();
+initializeScheduleScrolling();
 renderStatus();
 setInterval(renderStatus, 1000);
