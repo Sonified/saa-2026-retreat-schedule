@@ -691,10 +691,15 @@ function updateRecordingProgressDisplays(videoId = null) {
       resumeLabel.hidden = !hasProgress && !isComplete;
       resumeLabel.classList.toggle("is-complete", isComplete);
       resumeLabel.textContent = isComplete
-        ? "Complete"
+        ? "✓"
         : hasProgress
           ? `Resume from ${formatPlaybackTime(seconds)}`
           : "";
+      if (isComplete) {
+        resumeLabel.setAttribute("aria-label", "Complete");
+      } else {
+        resumeLabel.removeAttribute("aria-label");
+      }
     }
   });
 }

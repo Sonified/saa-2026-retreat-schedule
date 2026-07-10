@@ -721,6 +721,10 @@ body[data-display-tone="dim"] .day-tab[aria-selected="true"] .day-tab-date {
   color: var(--text);
 }
 
+.session-row[data-recording-video-id]:hover .session-recording-resume.is-complete {
+  color: #8ac9a3;
+}
+
 .session-row[data-recording-video-id]:hover .session-recording-link {
   color: #5a9bfa;
   text-decoration-color: currentColor;
@@ -920,8 +924,10 @@ body[data-display-tone="dim"] .session-row.is-active::after {
 }
 
 .session-recording-resume.is-complete {
-  color: var(--active);
-  font-weight: 600;
+  color: #69ad84;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .session-recording-resume[hidden],
@@ -935,7 +941,7 @@ body[data-display-tone="dim"] .session-recording-resume {
 }
 
 body[data-display-tone="dim"] .session-recording-resume.is-complete {
-  color: #657f82;
+  color: #527d63;
 }
 
 body[data-display-tone="dim"] .schedule-panel,
