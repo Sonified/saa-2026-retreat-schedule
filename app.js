@@ -413,7 +413,10 @@ function renderScheduleTabs(currentSourceDate, updateIndicator = true) {
     };
 
     tabs.forEach((tab, index) => {
-      tab.addEventListener("click", () => selectTab(tab, true));
+      tab.addEventListener("click", (event) => {
+        selectTab(tab, false);
+        if (event.detail > 0) tab.blur();
+      });
       tab.addEventListener("keydown", (event) => {
         let nextIndex = null;
 
@@ -599,8 +602,14 @@ function initializeScheduleScrolling() {
     selectRetreatDay(RETREAT_DATES[nextDayIndex].date, { animate: true });
   };
 
-  elements.schedulePrevious.addEventListener("click", () => stepSchedule(-1));
-  elements.scheduleNext.addEventListener("click", () => stepSchedule(1));
+  elements.schedulePrevious.addEventListener("click", (event) => {
+    stepSchedule(-1);
+    if (event.detail > 0) event.currentTarget.blur();
+  });
+  elements.scheduleNext.addEventListener("click", (event) => {
+    stepSchedule(1);
+    if (event.detail > 0) event.currentTarget.blur();
+  });
 
   elements.scheduleList.addEventListener("dragstart", (event) => {
     if (event.target.closest("a")) event.preventDefault();
@@ -625,7 +634,7 @@ function initializeScheduleScrolling() {
 
   window.addEventListener("scrollend", clearVerticalPageTarget);
 
-  document.addEventListener("keydown", (event) => {
+  window.addEventListener("keydown", (event) => {
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
 
     const eventTarget = event.target instanceof Element ? event.target : null;
@@ -688,7 +697,7 @@ function initializeScheduleScrolling() {
       animate: true,
       focusTab: Boolean(focusedTab),
     });
-  });
+  }, { capture: true });
 }
 
 function getSchedulePeriod(event) {
