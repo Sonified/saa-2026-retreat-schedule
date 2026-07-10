@@ -357,56 +357,93 @@ function getDefaultRetreatDate(now = new Date()) {
     : firstDate;
 }
 
-function renderScheduleTabs(currentSourceDate) {
-  elements.scheduleTabs.innerHTML = RETREAT_DATES.map((retreatDay, index) => {
-    const firstEvent = events.find((event) => event.sourceDate === retreatDay.date);
+function positionScheduleTabIndicator(dayPosition, { animate = false } = {}) {
+  const indicator = elements.scheduleTabs.querySelector(".day-tab-selection");
+  const tabs = Array.from(elements.scheduleTabs.querySelectorAll("[role=tab]"));
+  if (!indicator || tabs.length === 0 || !Number.isFinite(dayPosition)) return;
+
+  const boundedPosition = Math.min(tabs.length - 1, Math.max(0, dayPosition));
+  const firstIndex = Math.floor(boundedPosition);
+  const finalIndex = Math.ceil(boundedPosition);
+  const progress = boundedPosition - firstIndex;
+  const firstTab = tabs[firstIndex];
+  const finalTab = tabs[finalIndex];
+  const left = firstTab.offsetLeft + ((finalTab.offsetLeft - firstTab.offsetLeft) * progress);
+  const top = firstTab.offsetTop + ((finalTab.offsetTop - firstTab.offsetTop) * progress);
+  const width = firstTab.offsetWidth + ((finalTab.offsetWidth - firstTab.offsetWidth) * progress);
+  const height = firstTab.offsetHeight + ((finalTab.offsetHeight - firstTab.offsetHeight) * progress);
+
+  indicator.classList.toggle("is-animated", animate);
+  indicator.style.width = `${width}px`;
+  indicator.style.height = `${height}px`;
+  indicator.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+}
+
+function renderScheduleTabs(currentSourceDate, animate = false) {
+  let tabs = Array.from(elements.scheduleTabs.querySelectorAll("[role=tab]"));
+
+  if (tabs.length !== RETREAT_DATES.length) {
+    elements.scheduleTabs.innerHTML = `
+      <span class="day-tab-selection" aria-hidden="true"></span>
+      ${RETREAT_DATES.map((retreatDay, index) => {
+        const firstEvent = events.find((event) => event.sourceDate === retreatDay.date);
+
+        return `
+          <button
+            id="schedule-tab-${index + 1}"
+            class="day-tab"
+            type="button"
+            role="tab"
+            aria-controls="schedule-list"
+            data-source-date="${retreatDay.date}"
+          >
+            <span class="day-tab-name">Day ${index + 1}</span>
+            <span class="day-tab-date">${formatTabDate(firstEvent.start)}</span>
+          </button>
+        `;
+      }).join("")}
+    `;
+
+    tabs = Array.from(elements.scheduleTabs.querySelectorAll("[role=tab]"));
+
+    const selectTab = (tab, focusTab = false) => {
+      selectRetreatDay(tab.dataset.sourceDate, { animate: true, focusTab });
+    };
+
+    tabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => selectTab(tab, true));
+      tab.addEventListener("keydown", (event) => {
+        let nextIndex = null;
+
+        if (event.key === "Home") {
+          nextIndex = 0;
+        } else if (event.key === "End") {
+          nextIndex = tabs.length - 1;
+        }
+
+        if (nextIndex === null) return;
+        event.preventDefault();
+        selectTab(tabs[nextIndex], true);
+      });
+    });
+  }
+
+  tabs.forEach((tab, index) => {
+    const retreatDay = RETREAT_DATES[index];
     const isSelected = retreatDay.date === selectedRetreatDate;
     const isCurrent = retreatDay.date === currentSourceDate;
 
-    return `
-      <button
-        id="schedule-tab-${index + 1}"
-        class="day-tab${isCurrent ? " is-current" : ""}"
-        type="button"
-        role="tab"
-        aria-controls="schedule-list"
-        aria-selected="${isSelected}"
-        ${isCurrent ? 'aria-current="date"' : ""}
-        tabindex="${isSelected ? "0" : "-1"}"
-        data-source-date="${retreatDay.date}"
-      >
-        <span class="day-tab-name">Day ${index + 1}</span>
-        <span class="day-tab-date">${formatTabDate(firstEvent.start)}</span>
-      </button>
-    `;
-  }).join("");
-
-  const tabs = Array.from(elements.scheduleTabs.querySelectorAll("[role=tab]"));
-
-  const selectTab = (tab, focusTab = false) => {
-    selectRetreatDay(tab.dataset.sourceDate, { animate: true, focusTab });
-  };
-
-  tabs.forEach((tab, index) => {
-    tab.addEventListener("click", () => selectTab(tab, true));
-    tab.addEventListener("keydown", (event) => {
-      let nextIndex = null;
-
-      if (event.key === "ArrowRight" || event.key === "ArrowDown") {
-        nextIndex = (index + 1) % tabs.length;
-      } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
-        nextIndex = (index - 1 + tabs.length) % tabs.length;
-      } else if (event.key === "Home") {
-        nextIndex = 0;
-      } else if (event.key === "End") {
-        nextIndex = tabs.length - 1;
-      }
-
-      if (nextIndex === null) return;
-      event.preventDefault();
-      selectTab(tabs[nextIndex], true);
-    });
+    tab.classList.toggle("is-current", isCurrent);
+    tab.setAttribute("aria-selected", String(isSelected));
+    tab.setAttribute("tabindex", isSelected ? "0" : "-1");
+    if (isCurrent) {
+      tab.setAttribute("aria-current", "date");
+    } else {
+      tab.removeAttribute("aria-current");
+    }
   });
+
+  positionScheduleTabIndicator(getSelectedRetreatDayIndex(), { animate });
 }
 
 function getSelectedRetreatDayIndex() {
@@ -435,7 +472,7 @@ function updateScheduleSelection(now = new Date(), animate = false) {
 
   if (selectedDayIndex < 0 || selectedEvents.length === 0) return;
 
-  renderScheduleTabs(currentSourceDate);
+  renderScheduleTabs(currentSourceDate, animate);
   elements.scheduleList.setAttribute("aria-labelledby", `schedule-tab-${selectedDayIndex + 1}`);
   elements.scheduleTitle.textContent = "Retreat schedule";
   elements.sourceNote.innerHTML = `Times shown in <strong>${localTimeZone}</strong>.`;
@@ -496,7 +533,9 @@ function initializeScheduleGestures() {
   };
 
   const snapToSelectedDay = () => {
-    setScheduleTrackPosition(getSelectedRetreatDayIndex(), { animate: true });
+    const selectedDayIndex = getSelectedRetreatDayIndex();
+    setScheduleTrackPosition(selectedDayIndex, { animate: true });
+    positionScheduleTabIndicator(selectedDayIndex, { animate: true });
   };
 
   gestureTargets.forEach((target) => {
@@ -547,6 +586,17 @@ function initializeScheduleGestures() {
         animate: false,
         dragOffset: resistedOffset,
       });
+
+      const panelWidth = elements.scheduleList
+        .querySelector(".schedule-track")
+        ?.getBoundingClientRect().width;
+
+      if (panelWidth) {
+        positionScheduleTabIndicator(
+          gesture.dayIndex - (resistedOffset / panelWidth),
+          { animate: false }
+        );
+      }
     });
 
     const finishGesture = (event, cancelled = false) => {
@@ -628,6 +678,76 @@ function initializeScheduleGestures() {
 
   elements.scheduleList.addEventListener("dragstart", (event) => {
     if (event.target.closest("a")) event.preventDefault();
+  });
+
+  window.addEventListener("resize", () => {
+    positionScheduleTabIndicator(getSelectedRetreatDayIndex(), { animate: false });
+  });
+
+  let verticalPageTarget = null;
+  let verticalPageResetTimer = null;
+
+  const clearVerticalPageTarget = () => {
+    verticalPageTarget = null;
+    clearTimeout(verticalPageResetTimer);
+  };
+
+  window.addEventListener("scrollend", clearVerticalPageTarget);
+
+  document.addEventListener("keydown", (event) => {
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+
+    const eventTarget = event.target instanceof Element ? event.target : null;
+    if (eventTarget?.closest("input, select, textarea, [contenteditable]")) return;
+
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.preventDefault();
+
+      const targetId = event.key === "ArrowUp" ? "timer" : "schedule";
+      if (verticalPageTarget === targetId) return;
+
+      verticalPageTarget = targetId;
+      document.querySelector(`#${targetId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+
+      clearTimeout(verticalPageResetTimer);
+      verticalPageResetTimer = setTimeout(clearVerticalPageTarget, 800);
+      return;
+    }
+
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+
+    const interactiveTarget = eventTarget?.closest("a, button");
+    if (interactiveTarget && interactiveTarget.getAttribute("role") !== "tab") return;
+
+    const scheduleBounds = document.querySelector("#schedule").getBoundingClientRect();
+    const visibleScheduleHeight = Math.max(
+      0,
+      Math.min(window.innerHeight, scheduleBounds.bottom) - Math.max(0, scheduleBounds.top)
+    );
+
+    if (visibleScheduleHeight < window.innerHeight * 0.5) return;
+
+    const currentDayIndex = getSelectedRetreatDayIndex();
+    const direction = event.key === "ArrowRight" ? 1 : -1;
+    const nextDayIndex = Math.min(
+      RETREAT_DATES.length - 1,
+      Math.max(0, currentDayIndex + direction)
+    );
+
+    event.preventDefault();
+
+    if (nextDayIndex === currentDayIndex) {
+      snapToSelectedDay();
+      return;
+    }
+
+    selectRetreatDay(RETREAT_DATES[nextDayIndex].date, {
+      animate: true,
+      focusTab: interactiveTarget?.getAttribute("role") === "tab",
+    });
   });
 }
 
