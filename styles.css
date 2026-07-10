@@ -671,6 +671,16 @@ body[data-display-tone="dim"] .session-row.is-active::after {
   width: 2px;
   background: transparent;
   content: "";
+  opacity: 1;
+  transition: opacity 80ms ease;
+}
+
+.schedule-day-panel[aria-hidden="true"] .session-row::before {
+  opacity: 0;
+}
+
+.schedule-day-panel[aria-hidden="false"] .session-row::before {
+  transition-delay: var(--schedule-transition-duration);
 }
 
 .session-row.is-active::before {
@@ -917,5 +927,9 @@ body[data-display-tone="dim"] .session-row.is-next::before {
   .schedule-track.is-animated,
   .day-tab-selection.is-animated {
     transition: none;
+  }
+
+  .schedule-day-panel[aria-hidden="false"] .session-row::before {
+    transition-delay: 0ms;
   }
 }
