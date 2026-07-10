@@ -628,7 +628,7 @@ function renderSchedule(now = new Date()) {
           </a>
         `
         : `<div class="session-name">${event.name}</div>`;
-      const recordedMarker = event.isRecordedSession
+      const recordedMarker = event.isRecordedSession && !event.recordingUrl
         ? '<span class="session-recorded-marker is-visible" role="img" aria-label="Recorded"></span>'
         : '<span class="session-recorded-marker" aria-hidden="true"></span>';
 
@@ -656,6 +656,9 @@ function renderSchedule(now = new Date()) {
   const leftPeriods = periods.filter((period) => period.id !== "evening");
   const rightPeriods = periods.filter((period) => period.id === "evening");
   const oneColumnClass = rightPeriods.length === 0 ? " schedule-columns-single" : "";
+  const hasPendingRecordingLinks = selectedEvents.some(
+    (event) => event.isRecordedSession && !event.recordingUrl
+  );
   const recordingLegend = `
     <p class="recording-legend">
       <span class="session-recorded-marker is-visible" aria-hidden="true"></span>
@@ -668,12 +671,12 @@ function renderSchedule(now = new Date()) {
     <div class="schedule-columns${oneColumnClass}">
       <div class="schedule-column">
         ${leftPeriods.map(renderPeriod).join("")}
-        ${rightPeriods.length === 0 ? recordingLegend : ""}
+        ${rightPeriods.length === 0 && hasPendingRecordingLinks ? recordingLegend : ""}
       </div>
       ${rightPeriods.length > 0
         ? `<div class="schedule-column">
             ${rightPeriods.map(renderPeriod).join("")}
-            ${recordingLegend}
+            ${hasPendingRecordingLinks ? recordingLegend : ""}
           </div>`
         : ""}
     </div>
