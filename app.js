@@ -654,10 +654,7 @@ function initializeScheduleScrolling() {
     const isHorizontalArrow = event.key === "ArrowLeft" || event.key === "ArrowRight";
     if (!isDayShortcut && !isHorizontalArrow) return;
 
-    const interactiveTarget = eventTarget?.closest("a, button");
-    if (isHorizontalArrow
-      && interactiveTarget
-      && interactiveTarget.getAttribute("role") !== "tab") return;
+    const focusedTab = eventTarget?.closest('[role="tab"]');
 
     const scheduleBounds = document.querySelector("#schedule").getBoundingClientRect();
     const visibleScheduleHeight = Math.max(
@@ -689,7 +686,7 @@ function initializeScheduleScrolling() {
 
     selectRetreatDay(RETREAT_DATES[nextDayIndex].date, {
       animate: true,
-      focusTab: interactiveTarget?.getAttribute("role") === "tab",
+      focusTab: Boolean(focusedTab),
     });
   });
 }
