@@ -443,7 +443,12 @@ body[data-display-tone="dim"] .schedule-link:focus-visible span {
 }
 
 .schedule-list {
-  width: 100%;
+  overflow: hidden;
+  overscroll-behavior-x: none;
+  width: calc(100% + 12px);
+  margin-left: -12px;
+  padding-left: 12px;
+  touch-action: pan-y;
 }
 
 .schedule-tabs {
@@ -452,6 +457,29 @@ body[data-display-tone="dim"] .schedule-link:focus-visible span {
   gap: 8px;
   justify-content: flex-start;
   margin-bottom: 26px;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
+}
+
+.schedule-track {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  will-change: transform;
+}
+
+.schedule-track.is-animated {
+  transition: transform 440ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.schedule-day-panel {
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
+body.is-swiping-schedule {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .day-tab {
@@ -895,6 +923,10 @@ body[data-display-tone="dim"] .session-row.is-next::before {
   }
 
   .session-row.is-active::after {
+    transition: none;
+  }
+
+  .schedule-track.is-animated {
     transition: none;
   }
 }

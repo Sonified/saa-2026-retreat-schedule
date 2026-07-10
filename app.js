@@ -29,6 +29,7 @@ const RECORDINGS = {
     "Guided Meditation": "https://youtu.be/o_SpSquIuuM",
     Talk: "https://youtu.be/kMOeiAyKqTo",
     "Q&A": "https://youtu.be/Gan46Py8TlU",
+    Poetry: "https://youtu.be/eAL5vdTgRB0",
   },
 };
 const RECORDED_SESSION_NAMES = new Set([
@@ -443,15 +444,7 @@ function renderScheduleTabs(currentSourceDate) {
   const tabs = Array.from(elements.scheduleTabs.querySelectorAll("[role=tab]"));
 
   const selectTab = (tab, focusTab = false) => {
-    selectedRetreatDate = tab.dataset.sourceDate;
-    followsCurrentRetreatDay = selectedRetreatDate === getDefaultRetreatDate();
-    renderSchedule(new Date());
-
-    if (focusTab) {
-      elements.scheduleTabs
-        .querySelector(`[data-source-date="${selectedRetreatDate}"]`)
-        ?.focus();
-    }
+    selectRetreatDay(tab.dataset.sourceDate, { animate: true, focusTab });
   };
 
   tabs.forEach((tab, index) => {
@@ -473,6 +466,229 @@ function renderScheduleTabs(currentSourceDate) {
       event.preventDefault();
       selectTab(tabs[nextIndex], true);
     });
+  });
+}
+
+function getSelectedRetreatDayIndex() {
+  return RETREAT_DATES.findIndex((retreatDay) => retreatDay.date === selectedRetreatDate);
+}
+
+function setScheduleTrackPosition(dayIndex, { animate = true, dragOffset = null } = {}) {
+  const track = elements.scheduleList.querySelector(".schedule-track");
+  if (!track || dayIndex < 0) return;
+
+  track.classList.toggle("is-animated", animate);
+
+  if (dragOffset === null) {
+    track.style.transform = `translate3d(${-dayIndex * 100}%, 0, 0)`;
+    return;
+  }
+
+  const panelWidth = track.getBoundingClientRect().width;
+  track.style.transform = `translate3d(${(-dayIndex * panelWidth) + dragOffset}px, 0, 0)`;
+}
+
+function updateScheduleSelection(now = new Date(), animate = false) {
+  const currentSourceDate = formatDateKeyInZone(now, SOURCE_TIME_ZONE);
+  const selectedDayIndex = getSelectedRetreatDayIndex();
+  const selectedEvents = events.filter((event) => event.sourceDate === selectedRetreatDate);
+
+  if (selectedDayIndex < 0 || selectedEvents.length === 0) return;
+
+  renderScheduleTabs(currentSourceDate);
+  elements.scheduleList.setAttribute("aria-labelledby", `schedule-tab-${selectedDayIndex + 1}`);
+  elements.scheduleDay.textContent = `Day ${selectedDayIndex + 1} · ${formatScheduleDate(selectedEvents[0].start)}`;
+  elements.scheduleTitle.textContent = "Retreat schedule";
+  elements.sourceNote.innerHTML = `Times shown in <strong>${localTimeZone}</strong>.`;
+
+  elements.scheduleList.querySelectorAll(".schedule-day-panel").forEach((panel, index) => {
+    const isSelected = index === selectedDayIndex;
+    panel.setAttribute("aria-hidden", String(!isSelected));
+    panel.toggleAttribute("inert", !isSelected);
+  });
+
+  setScheduleTrackPosition(selectedDayIndex, { animate });
+  updateScheduleHighlights(findStatus(now), now);
+}
+
+function selectRetreatDay(sourceDate, { animate = true, focusTab = false } = {}) {
+  const nextDayIndex = RETREAT_DATES.findIndex((retreatDay) => retreatDay.date === sourceDate);
+  if (nextDayIndex < 0) return;
+
+  const selectionChanged = sourceDate !== selectedRetreatDate;
+  selectedRetreatDate = sourceDate;
+  followsCurrentRetreatDay = selectedRetreatDate === getDefaultRetreatDate();
+  updateScheduleSelection(new Date(), animate && selectionChanged);
+
+  const selectedTab = elements.scheduleTabs.querySelector(
+    `[data-source-date="${selectedRetreatDate}"]`
+  );
+
+  if (focusTab) selectedTab?.focus();
+
+  if (selectionChanged && elements.scheduleTabs.scrollWidth > elements.scheduleTabs.clientWidth) {
+    const tabsBounds = elements.scheduleTabs.getBoundingClientRect();
+    const selectedBounds = selectedTab?.getBoundingClientRect();
+
+    if (selectedBounds) {
+      const leftOverflow = selectedBounds.left - tabsBounds.left - 8;
+      const rightOverflow = selectedBounds.right - tabsBounds.right + 8;
+      const scrollDelta = leftOverflow < 0 ? leftOverflow : Math.max(0, rightOverflow);
+
+      elements.scheduleTabs.scrollBy({
+        left: scrollDelta,
+        behavior: animate ? "smooth" : "auto",
+      });
+    }
+  }
+}
+
+function initializeScheduleGestures() {
+  const gestureTargets = [elements.scheduleTabs, elements.scheduleList];
+  let gesture = null;
+  let suppressClicksUntil = 0;
+  let wheelDistance = 0;
+  let wheelResetTimer = null;
+  let wheelLockedUntil = 0;
+
+  const clearGesture = () => {
+    document.body.classList.remove("is-swiping-schedule");
+    gesture = null;
+  };
+
+  const snapToSelectedDay = () => {
+    setScheduleTrackPosition(getSelectedRetreatDayIndex(), { animate: true });
+  };
+
+  gestureTargets.forEach((target) => {
+    target.addEventListener("pointerdown", (event) => {
+      if (!event.isPrimary || event.button > 0) return;
+
+      gesture = {
+        pointerId: event.pointerId,
+        target,
+        startX: event.clientX,
+        startY: event.clientY,
+        startTime: performance.now(),
+        dayIndex: getSelectedRetreatDayIndex(),
+        dragging: false,
+        deltaX: 0,
+      };
+    });
+
+    target.addEventListener("pointermove", (event) => {
+      if (!gesture || gesture.pointerId !== event.pointerId) return;
+
+      const deltaX = event.clientX - gesture.startX;
+      const deltaY = event.clientY - gesture.startY;
+      const horizontalDistance = Math.abs(deltaX);
+      const verticalDistance = Math.abs(deltaY);
+
+      if (!gesture.dragging) {
+        if (verticalDistance > 10 && verticalDistance > horizontalDistance) {
+          clearGesture();
+          return;
+        }
+
+        if (horizontalDistance < 9 || horizontalDistance <= verticalDistance * 1.15) return;
+
+        gesture.dragging = true;
+        gesture.target.setPointerCapture?.(event.pointerId);
+        document.body.classList.add("is-swiping-schedule");
+      }
+
+      event.preventDefault();
+      gesture.deltaX = deltaX;
+
+      const atFirstDay = gesture.dayIndex === 0 && deltaX > 0;
+      const atFinalDay = gesture.dayIndex === RETREAT_DATES.length - 1 && deltaX < 0;
+      const resistedOffset = atFirstDay || atFinalDay ? deltaX * 0.24 : deltaX;
+
+      setScheduleTrackPosition(gesture.dayIndex, {
+        animate: false,
+        dragOffset: resistedOffset,
+      });
+    });
+
+    const finishGesture = (event, cancelled = false) => {
+      if (!gesture || gesture.pointerId !== event.pointerId) return;
+
+      const completedGesture = gesture;
+      const wasDragging = completedGesture.dragging;
+      const elapsed = Math.max(1, performance.now() - completedGesture.startTime);
+      const velocity = Math.abs(completedGesture.deltaX) / elapsed;
+      const distanceThreshold = Math.min(110, elements.scheduleList.clientWidth * 0.16);
+      const shouldAdvance = !cancelled && wasDragging && (
+        Math.abs(completedGesture.deltaX) >= distanceThreshold || velocity >= 0.48
+      );
+
+      clearGesture();
+
+      if (!wasDragging) return;
+
+      suppressClicksUntil = performance.now() + 400;
+
+      const direction = completedGesture.deltaX < 0 ? 1 : -1;
+      const nextDayIndex = shouldAdvance
+        ? Math.min(RETREAT_DATES.length - 1, Math.max(0, completedGesture.dayIndex + direction))
+        : completedGesture.dayIndex;
+
+      if (nextDayIndex === completedGesture.dayIndex) {
+        snapToSelectedDay();
+        return;
+      }
+
+      selectRetreatDay(RETREAT_DATES[nextDayIndex].date, { animate: true });
+    };
+
+    target.addEventListener("pointerup", (event) => finishGesture(event));
+    target.addEventListener("pointercancel", (event) => finishGesture(event, true));
+    target.addEventListener("wheel", (event) => {
+      const horizontalDistance = Math.abs(event.deltaX);
+      const verticalDistance = Math.abs(event.deltaY);
+
+      if (horizontalDistance < 3 || horizontalDistance <= verticalDistance * 1.15) return;
+
+      event.preventDefault();
+
+      const now = performance.now();
+      if (now < wheelLockedUntil) return;
+
+      wheelDistance += event.deltaX;
+      clearTimeout(wheelResetTimer);
+      wheelResetTimer = setTimeout(() => {
+        wheelDistance = 0;
+      }, 140);
+
+      if (Math.abs(wheelDistance) < 54) return;
+
+      const currentDayIndex = getSelectedRetreatDayIndex();
+      const direction = wheelDistance > 0 ? 1 : -1;
+      const nextDayIndex = Math.min(
+        RETREAT_DATES.length - 1,
+        Math.max(0, currentDayIndex + direction)
+      );
+
+      wheelDistance = 0;
+      wheelLockedUntil = now + 520;
+
+      if (nextDayIndex === currentDayIndex) {
+        snapToSelectedDay();
+        return;
+      }
+
+      selectRetreatDay(RETREAT_DATES[nextDayIndex].date, { animate: true });
+    }, { passive: false });
+    target.addEventListener("click", (event) => {
+      if (performance.now() >= suppressClicksUntil) return;
+      event.preventDefault();
+      event.stopPropagation();
+      suppressClicksUntil = 0;
+    }, true);
+  });
+
+  elements.scheduleList.addEventListener("dragstart", (event) => {
+    if (event.target.closest("a")) event.preventDefault();
   });
 }
 
@@ -582,29 +798,11 @@ function renderStatus() {
   updateScheduleHighlights(status, now);
 }
 
-function renderSchedule(now = new Date()) {
-  const currentSourceDate = formatDateKeyInZone(now, SOURCE_TIME_ZONE);
-  selectedRetreatDate ||= getDefaultRetreatDate(now);
-  const selectedDayIndex = RETREAT_DATES.findIndex(
-    (retreatDay) => retreatDay.date === selectedRetreatDate
-  );
-  const selectedEvents = events.filter((event) => event.sourceDate === selectedRetreatDate);
-
-  renderLocalizedDateRange();
-  renderScheduleTabs(currentSourceDate);
-  elements.scheduleList.setAttribute("aria-labelledby", `schedule-tab-${selectedDayIndex + 1}`);
-  elements.scheduleDay.textContent = `Day ${selectedDayIndex + 1} · ${formatScheduleDate(selectedEvents[0].start)}`;
-  elements.scheduleTitle.textContent = "Retreat schedule";
-  elements.sourceNote.innerHTML = `Times shown in <strong>${localTimeZone}</strong>.`;
-
-  if (selectedEvents.length === 0) {
-    elements.scheduleList.innerHTML = '<p class="empty-schedule">There are no retreat sessions scheduled today.</p>';
-    return;
-  }
-
+function renderRetreatDayPanel(retreatDay, dayIndex) {
+  const dayEvents = events.filter((event) => event.sourceDate === retreatDay.date);
   const periods = SCHEDULE_PERIODS.map((period) => ({
     ...period,
-    events: selectedEvents.filter((event) => getSchedulePeriod(event) === period.id),
+    events: dayEvents.filter((event) => getSchedulePeriod(event) === period.id),
   })).filter((period) => period.events.length > 0);
 
   const renderPeriod = (period) => {
@@ -646,8 +844,11 @@ function renderSchedule(now = new Date()) {
     }).join("");
 
     return `
-      <section class="schedule-period schedule-period-${period.id}" aria-labelledby="${period.id}-schedule-title">
-        <h3 id="${period.id}-schedule-title" class="period-title">${period.label}</h3>
+      <section
+        class="schedule-period schedule-period-${period.id}"
+        aria-labelledby="day-${dayIndex + 1}-${period.id}-schedule-title"
+      >
+        <h3 id="day-${dayIndex + 1}-${period.id}-schedule-title" class="period-title">${period.label}</h3>
         <div class="session-list">${rows}</div>
       </section>
     `;
@@ -656,7 +857,7 @@ function renderSchedule(now = new Date()) {
   const leftPeriods = periods.filter((period) => period.id !== "evening");
   const rightPeriods = periods.filter((period) => period.id === "evening");
   const oneColumnClass = rightPeriods.length === 0 ? " schedule-columns-single" : "";
-  const hasPendingRecordingLinks = selectedEvents.some(
+  const hasPendingRecordingLinks = dayEvents.some(
     (event) => event.isRecordedSession && !event.recordingUrl
   );
   const recordingLegend = `
@@ -667,22 +868,39 @@ function renderSchedule(now = new Date()) {
     </p>
   `;
 
-  elements.scheduleList.innerHTML = `
-    <div class="schedule-columns${oneColumnClass}">
-      <div class="schedule-column">
-        ${leftPeriods.map(renderPeriod).join("")}
-        ${rightPeriods.length === 0 && hasPendingRecordingLinks ? recordingLegend : ""}
+  return `
+    <section
+      class="schedule-day-panel"
+      data-source-date="${retreatDay.date}"
+      aria-label="Day ${dayIndex + 1} schedule"
+    >
+      <div class="schedule-columns${oneColumnClass}">
+        <div class="schedule-column">
+          ${leftPeriods.map(renderPeriod).join("")}
+          ${rightPeriods.length === 0 && hasPendingRecordingLinks ? recordingLegend : ""}
+        </div>
+        ${rightPeriods.length > 0
+          ? `<div class="schedule-column">
+              ${rightPeriods.map(renderPeriod).join("")}
+              ${hasPendingRecordingLinks ? recordingLegend : ""}
+            </div>`
+          : ""}
       </div>
-      ${rightPeriods.length > 0
-        ? `<div class="schedule-column">
-            ${rightPeriods.map(renderPeriod).join("")}
-            ${hasPendingRecordingLinks ? recordingLegend : ""}
-          </div>`
-        : ""}
+    </section>
+  `;
+}
+
+function renderSchedule(now = new Date()) {
+  selectedRetreatDate ||= getDefaultRetreatDate(now);
+  renderLocalizedDateRange();
+
+  elements.scheduleList.innerHTML = `
+    <div class="schedule-track">
+      ${RETREAT_DATES.map(renderRetreatDayPanel).join("")}
     </div>
   `;
 
-  updateScheduleHighlights(findStatus(now), now);
+  updateScheduleSelection(now, false);
 }
 
 function getRemainingProgress(start, end, now) {
@@ -730,5 +948,6 @@ function updateScheduleHighlights(status, now = new Date()) {
 }
 
 initializeTimeZonePreview();
+initializeScheduleGestures();
 renderStatus();
 setInterval(renderStatus, 1000);
