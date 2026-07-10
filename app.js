@@ -625,6 +625,7 @@ function renderSchedule(now = new Date()) {
             aria-label="Watch the ${event.name} recording on YouTube"
           >
             <span>${event.name}</span>
+            <span class="recording-suffix">(recording)</span>
           </a>
         `
         : `<div class="session-name">${event.name}</div>`;
