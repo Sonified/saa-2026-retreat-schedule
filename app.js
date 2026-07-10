@@ -2,6 +2,7 @@ const SOURCE_TIME_ZONE = "America/Los_Angeles";
 const DISPLAY_TONE_STORAGE_KEY = "retreat-display-tone-v2";
 const SECONDS_VISIBILITY_STORAGE_KEY = "retreat-seconds-visibility-v2";
 const SCHEDULE_SELECTION_STORAGE_KEY = "retreat-schedule-selection-v1";
+const RECORDING_PROGRESS_STORAGE_KEY = "retreat-recording-progress-v1";
 const RETREAT_DATES = [
   { date: "2026-07-08", template: "full" },
   { date: "2026-07-09", template: "full" },
@@ -89,7 +90,7 @@ const elements = {
   recordingDialog: document.querySelector("#recording-dialog"),
   recordingDialogTitle: document.querySelector("#recording-dialog-title"),
   recordingDialogClose: document.querySelector("#recording-dialog-close"),
-  recordingPlayerFrame: document.querySelector("#recording-player-frame"),
+  recordingPlayerMount: document.querySelector("#recording-player-mount"),
 };
 
 const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -297,21 +298,6 @@ function formatTimeWithZone(date) {
   }).format(date);
 }
 
-function formatDateHeading(date) {
-  return new Intl.DateTimeFormat(undefined, {
-    timeZone: localTimeZone,
-    weekday: "long",
-  }).format(date);
-}
-
-function formatDateSubheading(date) {
-  return new Intl.DateTimeFormat(undefined, {
-    timeZone: localTimeZone,
-    month: "long",
-    day: "numeric",
-  }).format(date);
-}
-
 function formatTabDate(date) {
   return new Intl.DateTimeFormat(undefined, {
     timeZone: localTimeZone,
@@ -330,10 +316,6 @@ function formatDateKeyInZone(date, timeZone) {
   }).formatToParts(date);
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${values.year}-${values.month}-${values.day}`;
-}
-
-function formatLocalDateKey(date) {
-  return formatDateKeyInZone(date, localTimeZone);
 }
 
 function getCalendarDateParts(date, timeZone) {
@@ -603,10 +585,209 @@ function getYouTubeVideoId(url) {
   return null;
 }
 
+let youtubeIframeApiPromise = null;
+
+function loadYouTubeIframeApi() {
+  if (window.YT?.Player) return Promise.resolve(window.YT);
+  if (youtubeIframeApiPromise) return youtubeIframeApiPromise;
+
+  youtubeIframeApiPromise = new Promise((resolve, reject) => {
+    const previousReadyHandler = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      previousReadyHandler?.();
+      resolve(window.YT);
+    };
+
+    let script = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
+    if (!script) {
+      script = document.createElement("script");
+      script.src = "https://www.youtube.com/iframe_api";
+      script.async = true;
+      document.head.append(script);
+    }
+
+    script.addEventListener("error", () => {
+      youtubeIframeApiPromise = null;
+      reject(new Error("YouTube IFrame API failed to load"));
+    }, { once: true });
+  });
+
+  return youtubeIframeApiPromise;
+}
+
+function getRecordingProgress() {
+  try {
+    const progress = JSON.parse(localStorage.getItem(RECORDING_PROGRESS_STORAGE_KEY));
+    return progress && typeof progress === "object" ? progress : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function getRecordingResumeTime(videoId) {
+  const entry = getRecordingProgress()[videoId];
+  if (entry?.completed) return 0;
+
+  const seconds = Number(entry?.seconds);
+  return Number.isFinite(seconds) && seconds >= 5 ? seconds : 0;
+}
+
+function formatPlaybackTime(seconds) {
+  const wholeSeconds = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(wholeSeconds / 3600);
+  const minutes = Math.floor((wholeSeconds % 3600) / 60);
+  const remainingSeconds = wholeSeconds % 60;
+
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`
+    : `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+}
+
+function updateRecordingProgressDisplays(videoId = null) {
+  const progress = getRecordingProgress();
+
+  document.querySelectorAll(".session-row[data-recording-video-id]").forEach((row) => {
+    const rowVideoId = row.dataset.recordingVideoId;
+    if (videoId && rowVideoId !== videoId) return;
+
+    const entry = progress[rowVideoId];
+    const seconds = Number(entry?.seconds);
+    const duration = Number(entry?.duration);
+    const isComplete = entry?.completed === true;
+    const hasProgress = !isComplete && Number.isFinite(seconds) && seconds >= 5;
+    const percentage = isComplete
+      ? 100
+      : hasProgress && Number.isFinite(duration) && duration > 0
+        ? Math.min(100, Math.max(0, (seconds / duration) * 100))
+        : 0;
+    const resumeLabel = row.querySelector(".session-recording-resume");
+
+    row.classList.toggle("has-recording-progress", percentage > 0);
+    row.classList.toggle("is-recording-complete", isComplete);
+    if (percentage > 0) {
+      row.style.setProperty("--recording-progress", `${percentage}%`);
+    } else {
+      row.style.removeProperty("--recording-progress");
+    }
+
+    if (resumeLabel) {
+      resumeLabel.hidden = !hasProgress && !isComplete;
+      resumeLabel.classList.toggle("is-complete", isComplete);
+      resumeLabel.textContent = isComplete
+        ? "Complete"
+        : hasProgress
+          ? `Resume from ${formatPlaybackTime(seconds)}`
+          : "";
+    }
+  });
+}
+
+function clearRecordingProgress(videoId) {
+  const progress = getRecordingProgress();
+  delete progress[videoId];
+  storePreference(RECORDING_PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+  updateRecordingProgressDisplays(videoId);
+}
+
+function storeRecordingProgress(videoId, seconds, duration) {
+  if (!videoId || !Number.isFinite(seconds) || seconds < 5) return;
+
+  const progress = getRecordingProgress();
+  if (progress[videoId]?.completed) return;
+
+  const completionWindow = Number.isFinite(duration) && duration > 0
+    ? Math.min(30, duration * 0.05)
+    : 0;
+
+  if (completionWindow && duration - seconds <= completionWindow) {
+    clearRecordingProgress(videoId);
+    return;
+  }
+
+  progress[videoId] = {
+    seconds: Math.floor(seconds),
+    duration: Number.isFinite(duration) ? Math.floor(duration) : 0,
+    updatedAt: Date.now(),
+  };
+  storePreference(RECORDING_PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+  updateRecordingProgressDisplays(videoId);
+}
+
+function storeRecordingCompletion(videoId, duration) {
+  if (!videoId) return;
+
+  const progress = getRecordingProgress();
+  const completedDuration = Number.isFinite(duration) && duration > 0
+    ? Math.floor(duration)
+    : Number(progress[videoId]?.duration) || 0;
+
+  progress[videoId] = {
+    seconds: completedDuration,
+    duration: completedDuration,
+    completed: true,
+    updatedAt: Date.now(),
+  };
+  storePreference(RECORDING_PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+  updateRecordingProgressDisplays(videoId);
+}
+
+function createRecordingPlayerFrame(videoId, title, resumeTime) {
+  const frame = document.createElement("iframe");
+  const parameters = new URLSearchParams({
+    autoplay: "1",
+    enablejsapi: "1",
+    playsinline: "1",
+    rel: "0",
+  });
+
+  if (resumeTime >= 5) parameters.set("start", String(Math.floor(resumeTime)));
+  if (window.location.origin && window.location.origin !== "null") {
+    parameters.set("origin", window.location.origin);
+  }
+
+  frame.id = "recording-player-frame";
+  frame.title = `${title} recording`;
+  frame.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?${parameters}`;
+  frame.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen";
+  frame.referrerPolicy = "strict-origin-when-cross-origin";
+  frame.allowFullscreen = true;
+  elements.recordingPlayerMount.replaceChildren(frame);
+  return frame;
+}
+
 function initializeRecordingDialog() {
   let trigger = null;
   let playerFocusGuard = null;
   let closeTimer = null;
+  let progressTimer = null;
+  let player = null;
+  let playerFrame = null;
+  let activeVideoId = null;
+  let playerSession = 0;
+
+  const stopProgressTimer = () => {
+    clearInterval(progressTimer);
+    progressTimer = null;
+  };
+
+  const saveProgress = () => {
+    if (!player || !activeVideoId) return;
+
+    try {
+      storeRecordingProgress(
+        activeVideoId,
+        player.getCurrentTime(),
+        player.getDuration()
+      );
+    } catch (_) {
+      // A plain embed still works if the player API is not ready.
+    }
+  };
+
+  const startProgressTimer = () => {
+    stopProgressTimer();
+    progressTimer = setInterval(saveProgress, 5000);
+  };
 
   const closeDialog = () => {
     if (!elements.recordingDialog.open
@@ -622,14 +803,17 @@ function initializeRecordingDialog() {
   };
 
   elements.scheduleList.addEventListener("click", (event) => {
-    const link = event.target.closest(".session-recording-link");
+    const row = event.target.closest(".session-row[data-recording-video-id]");
+    const link = row?.querySelector(".session-recording-link");
     if (!link || typeof elements.recordingDialog.showModal !== "function") return;
 
     const videoId = getYouTubeVideoId(link.href);
     if (!videoId) return;
 
     event.preventDefault();
-    trigger = link;
+    trigger = event.target.closest(".session-recording-link, .session-recording-resume") || link;
+    activeVideoId = videoId;
+    const currentPlayerSession = ++playerSession;
 
     const sessionName = link.textContent.trim();
     const sourceDate = link.closest(".schedule-day-panel")?.dataset.sourceDate;
@@ -639,18 +823,47 @@ function initializeRecordingDialog() {
       : sessionName;
 
     elements.recordingDialogTitle.textContent = recordingTitle;
-    elements.recordingPlayerFrame.title = `${recordingTitle} recording`;
-    elements.recordingPlayerFrame.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1&rel=0`;
+    const resumeTime = getRecordingResumeTime(videoId);
+    playerFrame = createRecordingPlayerFrame(videoId, recordingTitle, resumeTime);
     document.body.classList.add("has-open-recording");
     elements.recordingDialog.showModal();
     elements.recordingDialog.focus({ preventScroll: true });
     clearInterval(playerFocusGuard);
     playerFocusGuard = setInterval(() => {
       if (document.fullscreenElement) return;
-      if (document.activeElement === elements.recordingPlayerFrame) {
+      if (document.activeElement === playerFrame) {
         elements.recordingDialog.focus({ preventScroll: true });
       }
     }, 30);
+
+    loadYouTubeIframeApi().then(() => {
+      if (currentPlayerSession !== playerSession
+        || !elements.recordingDialog.open
+        || !playerFrame?.isConnected) return;
+
+      player = new window.YT.Player(playerFrame, {
+        events: {
+          onReady: (playerEvent) => {
+            if (resumeTime >= 5) playerEvent.target.seekTo(resumeTime, true);
+          },
+          onStateChange: (playerEvent) => {
+            if (playerEvent.data === window.YT.PlayerState.PLAYING) {
+              startProgressTimer();
+              return;
+            }
+
+            stopProgressTimer();
+            if (playerEvent.data === window.YT.PlayerState.ENDED) {
+              storeRecordingCompletion(activeVideoId, playerEvent.target.getDuration());
+            } else {
+              saveProgress();
+            }
+          },
+        },
+      });
+    }).catch(() => {
+      // Playback remains available without progress tracking if the API fails.
+    });
   });
 
   window.addEventListener("keydown", (event) => {
@@ -667,16 +880,25 @@ function initializeRecordingDialog() {
     if (event.target === elements.recordingDialog) closeDialog();
   });
   elements.recordingDialog.addEventListener("close", () => {
+    saveProgress();
+    stopProgressTimer();
+    playerSession += 1;
     clearTimeout(closeTimer);
     closeTimer = null;
     elements.recordingDialog.classList.remove("is-closing");
     clearInterval(playerFocusGuard);
     playerFocusGuard = null;
-    elements.recordingPlayerFrame.removeAttribute("src");
+    player?.destroy();
+    player = null;
+    playerFrame = null;
+    activeVideoId = null;
+    elements.recordingPlayerMount.replaceChildren();
     document.body.classList.remove("has-open-recording");
     trigger?.focus();
     trigger = null;
   });
+
+  window.addEventListener("pagehide", saveProgress);
 }
 
 function initializeScheduleScrolling() {
@@ -955,13 +1177,10 @@ function renderRetreatDayPanel(retreatDay, dayIndex) {
   })).filter((period) => period.events.length > 0);
 
   const renderPeriod = (period) => {
-    let previousLocalDate = null;
     const rows = period.events.map((event) => {
-      const localDate = formatLocalDateKey(event.start);
-      const dateMarker = localDate === previousLocalDate ? "" : `
-        <p class="local-date-marker">${formatDateHeading(event.start)} <span>${formatDateSubheading(event.start)}</span></p>
-      `;
-      previousLocalDate = localDate;
+      const recordingVideoId = event.recordingUrl
+        ? getYouTubeVideoId(event.recordingUrl)
+        : null;
       const sessionName = event.recordingUrl
         ? `
           <a
@@ -978,15 +1197,27 @@ function renderRetreatDayPanel(retreatDay, dayIndex) {
       const recordedMarker = event.isRecordedSession && !event.recordingUrl
         ? '<span class="session-recorded-marker is-visible" role="img" aria-label="Recorded"></span>'
         : '<span class="session-recorded-marker" aria-hidden="true"></span>';
+      const recordingResume = recordingVideoId
+        ? `<a
+            class="session-recording-resume"
+            href="${event.recordingUrl}"
+            target="_blank"
+            rel="noopener noreferrer"
+            hidden
+          ></a>`
+        : "";
+      const recordingData = recordingVideoId
+        ? ` data-recording-video-id="${recordingVideoId}"`
+        : "";
 
-      return `${dateMarker}
-      <div class="session-row" data-start="${event.start.toISOString()}">
+      return `<div class="session-row" data-start="${event.start.toISOString()}"${recordingData}>
         <time class="session-time" datetime="${event.start.toISOString()}">${formatTime(event.start)}</time>
         ${recordedMarker}
         <div class="session-detail">
           ${sessionName}
           <span class="session-state" aria-hidden="true"></span>
           <span class="session-row-countdown" aria-hidden="true" hidden></span>
+          ${recordingResume}
         </div>
       </div>
       `;
@@ -1049,6 +1280,7 @@ function renderSchedule(now = new Date()) {
     </div>
   `;
 
+  updateRecordingProgressDisplays();
   updateScheduleSelection(now, false, true, false);
 }
 
