@@ -1,6 +1,7 @@
 const SOURCE_TIME_ZONE = "America/Los_Angeles";
 const DISPLAY_TONE_STORAGE_KEY = "retreat-display-tone-v2";
 const SECONDS_VISIBILITY_STORAGE_KEY = "retreat-seconds-visibility-v2";
+const SCHEDULE_SELECTION_STORAGE_KEY = "retreat-schedule-selection-v1";
 const RETREAT_DATES = [
   { date: "2026-07-08", template: "full" },
   { date: "2026-07-09", template: "full" },
@@ -85,13 +86,16 @@ const elements = {
   scheduleList: document.querySelector("#schedule-list"),
   schedulePrevious: document.querySelector("#schedule-previous"),
   scheduleNext: document.querySelector("#schedule-next"),
+  recordingDialog: document.querySelector("#recording-dialog"),
+  recordingDialogTitle: document.querySelector("#recording-dialog-title"),
+  recordingDialogClose: document.querySelector("#recording-dialog-close"),
+  recordingPlayerFrame: document.querySelector("#recording-player-frame"),
 };
 
 const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 const events = buildEvents();
 let observedSourceDate = null;
 let selectedRetreatDate = null;
-let followsCurrentRetreatDay = true;
 let showCountdownSeconds = false;
 
 function storePreference(key, value) {
@@ -100,6 +104,33 @@ function storePreference(key, value) {
   } catch (_) {
     // The controls still work when storage is unavailable.
   }
+}
+
+function getStoredScheduleSelection(sourceDate) {
+  try {
+    const storedSelection = JSON.parse(localStorage.getItem(SCHEDULE_SELECTION_STORAGE_KEY));
+    const isRetreatDate = RETREAT_DATES.some(
+      (retreatDay) => retreatDay.date === storedSelection?.retreatDate
+    );
+
+    if (storedSelection?.sourceDate === sourceDate && isRetreatDate) {
+      return storedSelection.retreatDate;
+    }
+  } catch (_) {
+    // The current retreat day remains the fallback when storage is unavailable.
+  }
+
+  return null;
+}
+
+function storeScheduleSelection(retreatDate, sourceDate = formatDateKeyInZone(
+  new Date(),
+  SOURCE_TIME_ZONE
+)) {
+  storePreference(SCHEDULE_SELECTION_STORAGE_KEY, JSON.stringify({
+    retreatDate,
+    sourceDate,
+  }));
 }
 
 function setDisplayTone(tone, persist = false) {
@@ -520,7 +551,7 @@ function selectRetreatDay(sourceDate, {
 
   const selectionChanged = sourceDate !== selectedRetreatDate;
   selectedRetreatDate = sourceDate;
-  followsCurrentRetreatDay = selectedRetreatDate === getDefaultRetreatDate();
+  storeScheduleSelection(selectedRetreatDate);
   updateScheduleSelection(
     new Date(),
     animate && selectionChanged,
@@ -549,6 +580,85 @@ function selectRetreatDay(sourceDate, {
       });
     }
   }
+}
+
+function getYouTubeVideoId(url) {
+  try {
+    const parsedUrl = new URL(url);
+
+    if (parsedUrl.hostname === "youtu.be") {
+      return parsedUrl.pathname.split("/").filter(Boolean)[0] || null;
+    }
+
+    if (parsedUrl.hostname === "youtube.com" || parsedUrl.hostname.endsWith(".youtube.com")) {
+      if (parsedUrl.pathname === "/watch") return parsedUrl.searchParams.get("v");
+
+      const [format, videoId] = parsedUrl.pathname.split("/").filter(Boolean);
+      if (["embed", "shorts", "live"].includes(format)) return videoId || null;
+    }
+  } catch (_) {
+    // The original recording link remains available when a URL cannot be embedded.
+  }
+
+  return null;
+}
+
+function initializeRecordingDialog() {
+  let trigger = null;
+
+  const closeDialog = () => {
+    if (elements.recordingDialog.open) elements.recordingDialog.close();
+  };
+
+  elements.scheduleList.addEventListener("click", (event) => {
+    const link = event.target.closest(".session-recording-link");
+    if (!link || typeof elements.recordingDialog.showModal !== "function") return;
+
+    const videoId = getYouTubeVideoId(link.href);
+    if (!videoId) return;
+
+    event.preventDefault();
+    trigger = link;
+
+    const sessionName = link.textContent.trim();
+    const sourceDate = link.closest(".schedule-day-panel")?.dataset.sourceDate;
+    const dayIndex = RETREAT_DATES.findIndex((retreatDay) => retreatDay.date === sourceDate);
+    const firstDayEvent = events.find((scheduleEvent) => scheduleEvent.sourceDate === sourceDate);
+    const dateLabel = firstDayEvent ? formatTabDate(firstDayEvent.start) : "";
+    const titleParts = [
+      dayIndex >= 0 ? `Day ${dayIndex + 1}` : "",
+      dateLabel,
+      sessionName,
+    ].filter(Boolean);
+    const recordingTitle = titleParts.join(" – ");
+
+    elements.recordingDialogTitle.textContent = recordingTitle;
+    elements.recordingPlayerFrame.title = `${recordingTitle} recording`;
+    elements.recordingPlayerFrame.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1&rel=0`;
+    document.body.classList.add("has-open-recording");
+    elements.recordingDialog.showModal();
+    elements.recordingDialogClose.focus();
+  });
+
+  elements.recordingDialogClose.addEventListener("click", closeDialog);
+  elements.recordingDialog.addEventListener("click", (event) => {
+    if (event.target === elements.recordingDialog) closeDialog();
+  });
+  window.addEventListener("blur", () => {
+    if (!elements.recordingDialog.open) return;
+
+    setTimeout(() => {
+      if (document.activeElement === elements.recordingPlayerFrame) {
+        elements.recordingDialogClose.focus({ preventScroll: true });
+      }
+    }, 0);
+  });
+  elements.recordingDialog.addEventListener("close", () => {
+    elements.recordingPlayerFrame.removeAttribute("src");
+    document.body.classList.remove("has-open-recording");
+    trigger?.focus();
+    trigger = null;
+  });
 }
 
 function initializeScheduleScrolling() {
@@ -785,10 +895,12 @@ function renderStatus() {
   const sourceDate = formatDateKeyInZone(now, SOURCE_TIME_ZONE);
 
   if (sourceDate !== observedSourceDate) {
+    const isInitialRender = observedSourceDate === null;
     observedSourceDate = sourceDate;
-    if (followsCurrentRetreatDay || !selectedRetreatDate) {
-      selectedRetreatDate = getDefaultRetreatDate(now);
-    }
+    selectedRetreatDate = isInitialRender
+      ? getStoredScheduleSelection(sourceDate) || getDefaultRetreatDate(now)
+      : getDefaultRetreatDate(now);
+    storeScheduleSelection(selectedRetreatDate, sourceDate);
     renderSchedule(now);
   }
 
@@ -967,5 +1079,6 @@ function updateScheduleHighlights(status, now = new Date()) {
 }
 
 initializeScheduleScrolling();
+initializeRecordingDialog();
 renderStatus();
 setInterval(renderStatus, 1000);
