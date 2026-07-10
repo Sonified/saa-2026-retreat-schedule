@@ -867,10 +867,39 @@ function initializeRecordingDialog() {
   });
 
   window.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || !elements.recordingDialog.open) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    closeDialog();
+    if (!elements.recordingDialog.open) return;
+
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      try {
+        if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+          const direction = event.key === "ArrowRight" ? 1 : -1;
+          const duration = player?.getDuration() || 0;
+          const requestedTime = (player?.getCurrentTime() || 0) + direction * 5;
+          const targetTime = Math.max(0, duration > 0
+            ? Math.min(duration, requestedTime)
+            : requestedTime);
+          player?.seekTo(targetTime, true);
+        } else {
+          const direction = event.key === "ArrowUp" ? 1 : -1;
+          const targetVolume = Math.min(100, Math.max(0, (player?.getVolume() || 0) + direction * 5));
+          player?.setVolume(targetVolume);
+          if (direction > 0) player?.unMute();
+        }
+      } catch (_) {
+        // The page remains still if the YouTube player is not ready yet.
+      }
+
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      closeDialog();
+    }
   }, { capture: true });
   elements.recordingDialogClose.form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -985,6 +1014,7 @@ function initializeScheduleScrolling() {
   window.addEventListener("scrollend", clearVerticalPageTarget);
 
   window.addEventListener("keydown", (event) => {
+    if (elements.recordingDialog.open) return;
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
 
     const eventTarget = event.target instanceof Element ? event.target : null;
