@@ -581,7 +581,6 @@ body[data-display-tone="dim"] .day-tab[aria-selected="true"] .day-tab-date {
 
 .schedule-columns-single {
   grid-template-columns: minmax(0, 520px);
-  min-height: 520px;
 }
 
 .schedule-column {

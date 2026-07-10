@@ -778,6 +778,17 @@ function getDurationDisplay(milliseconds, includeSeconds = showCountdownSeconds)
 
     const totalMinutes = Math.ceil(remainingMilliseconds / 60000);
 
+    if (totalMinutes > 180) {
+      const hoursValue = String(Math.ceil(totalMinutes / 60));
+
+      return {
+        text: `${hoursValue} hr`,
+        value: hoursValue,
+        unit: "hr",
+        accessibleText: `${hoursValue} hours`,
+      };
+    }
+
     return {
       text: `${totalMinutes} min`,
       value: String(totalMinutes),
