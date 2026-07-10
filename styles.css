@@ -95,54 +95,6 @@ h3 {
   transition: color 240ms ease;
 }
 
-html[data-local-preview="true"] .retreat-title {
-  max-width: calc(100% - 360px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.timezone-preview {
-  position: absolute;
-  top: 8px;
-  left: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 30px;
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 600;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.timezone-preview[hidden] {
-  display: none;
-}
-
-.timezone-preview select {
-  width: 106px;
-  height: 30px;
-  padding: 0 24px 0 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #0b0c14;
-  color: var(--next-text);
-  font: inherit;
-  cursor: pointer;
-}
-
-.timezone-preview select:focus-visible {
-  outline: 2px solid var(--active);
-  outline-offset: 2px;
-}
-
-body[data-display-tone="dim"] .timezone-preview,
-body[data-display-tone="dim"] .timezone-preview select {
-  color: var(--dim-live-text);
-}
-
 html[data-display-tone="dim"] .retreat-title {
   color: var(--dim-live-text);
 }
@@ -341,9 +293,9 @@ html[data-display-tone="dim"] body[data-display-tone="dim"]
   outline-offset: 2px;
 }
 
-.schedule-link {
+.schedule-link,
+.timer-link {
   position: absolute;
-  bottom: 72px;
   left: 50%;
   display: inline-flex;
   align-items: center;
@@ -360,36 +312,54 @@ html[data-display-tone="dim"] body[data-display-tone="dim"]
   white-space: nowrap;
 }
 
+.schedule-link {
+  bottom: 72px;
+}
+
+.timer-link {
+  top: 48px;
+}
+
 .schedule-link:hover,
-.schedule-link:focus-visible {
+.schedule-link:focus-visible,
+.timer-link:hover,
+.timer-link:focus-visible {
   color: var(--text);
 }
 
-.schedule-link span {
+.schedule-link span,
+.timer-link span {
   color: var(--accent);
   font-size: 1rem;
   transition: color 180ms ease;
 }
 
-body[data-display-tone="dim"] .schedule-link {
+body[data-display-tone="dim"] .schedule-link,
+body[data-display-tone="dim"] .timer-link {
   color: var(--dim-live-text);
 }
 
-body[data-display-tone="dim"] .schedule-link span {
+body[data-display-tone="dim"] .schedule-link span,
+body[data-display-tone="dim"] .timer-link span {
   color: var(--dim-accent);
 }
 
 body[data-display-tone="dim"] .schedule-link:hover,
-body[data-display-tone="dim"] .schedule-link:focus-visible {
+body[data-display-tone="dim"] .schedule-link:focus-visible,
+body[data-display-tone="dim"] .timer-link:hover,
+body[data-display-tone="dim"] .timer-link:focus-visible {
   color: var(--muted);
 }
 
 body[data-display-tone="dim"] .schedule-link:hover span,
-body[data-display-tone="dim"] .schedule-link:focus-visible span {
+body[data-display-tone="dim"] .schedule-link:focus-visible span,
+body[data-display-tone="dim"] .timer-link:hover span,
+body[data-display-tone="dim"] .timer-link:focus-visible span {
   color: var(--accent);
 }
 
 .schedule-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -410,10 +380,6 @@ body[data-display-tone="dim"] .schedule-link:focus-visible span {
   justify-content: space-between;
   gap: 36px;
   margin-bottom: 24px;
-}
-
-.schedule-heading .section-label {
-  margin-bottom: 14px;
 }
 
 .schedule-heading h2 {
@@ -469,7 +435,7 @@ body[data-display-tone="dim"] .schedule-link:focus-visible span {
 }
 
 .schedule-track.is-animated {
-  transition: transform 440ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 390ms cubic-bezier(0.25, 0.65, 0.45, 0.95);
 }
 
 .schedule-day-panel {
@@ -798,7 +764,6 @@ body[data-display-tone="dim"] .schedule-heading h2 {
   color: #a3a0aa;
 }
 
-body[data-display-tone="dim"] .schedule-heading .section-label,
 body[data-display-tone="dim"] .period-title {
   color: #856f55;
 }
@@ -853,7 +818,8 @@ body[data-display-tone="dim"] .session-row.is-next::before {
 }
 
 @media (max-width: 700px) {
-  .schedule-link {
+  .schedule-link,
+  .timer-link {
     max-width: calc(100% - 36px);
     white-space: normal;
   }
@@ -905,14 +871,6 @@ body[data-display-tone="dim"] .session-row.is-next::before {
     text-align: left;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  html[data-local-preview="true"] .retreat-title {
-    right: 146px;
-    left: 140px;
-    width: auto;
-    max-width: none;
-    text-align: center;
   }
 
 }

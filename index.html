@@ -29,16 +29,6 @@
   </head>
   <body>
     <header class="site-header">
-      <div id="timezone-preview" class="timezone-preview" hidden>
-        <label for="timezone-preview-select">View:</label>
-        <select id="timezone-preview-select">
-          <option value="device">Device Local</option>
-          <option value="America/Los_Angeles">LA / PT</option>
-          <option value="America/New_York">New York</option>
-          <option value="Europe/London">London</option>
-          <option value="Australia/Sydney">Australia / Sydney</option>
-        </select>
-      </div>
       <p class="retreat-title">
         Simply Always Awake Online Retreat
         <span aria-hidden="true">·</span>
@@ -74,7 +64,7 @@
     </script>
 
     <main>
-      <section class="live-panel" aria-labelledby="current-title">
+      <section id="timer" class="live-panel" aria-labelledby="current-title">
         <div class="live-content">
           <p id="status-label" class="section-label">Happening now</p>
           <h1 id="current-title">Loading…</h1>
@@ -96,9 +86,13 @@
       </section>
 
       <section id="schedule" class="schedule-panel" aria-labelledby="schedule-title">
+        <a class="timer-link" href="#timer">
+          Return to timer
+          <span aria-hidden="true">↑</span>
+        </a>
+
         <div class="schedule-heading">
           <div>
-            <p id="schedule-day" class="section-label">Retreat schedule</p>
             <h2 id="schedule-title">Choose a day</h2>
           </div>
           <p id="source-note" class="source-note"></p>

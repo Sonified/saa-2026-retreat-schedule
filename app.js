@@ -1,14 +1,6 @@
 const SOURCE_TIME_ZONE = "America/Los_Angeles";
 const DISPLAY_TONE_STORAGE_KEY = "retreat-display-tone-v2";
 const SECONDS_VISIBILITY_STORAGE_KEY = "retreat-seconds-visibility-v2";
-const TIME_ZONE_PREVIEW_STORAGE_KEY = "retreat-time-zone-preview-v1";
-const TIME_ZONE_OPTIONS = new Set([
-  "device",
-  "America/Los_Angeles",
-  "America/New_York",
-  "Europe/London",
-  "Australia/Sydney",
-]);
 const RETREAT_DATES = [
   { date: "2026-07-08", template: "full" },
   { date: "2026-07-09", template: "full" },
@@ -78,8 +70,6 @@ const SCHEDULE_PERIODS = [
 ];
 
 const elements = {
-  timeZonePreview: document.querySelector("#timezone-preview"),
-  timeZonePreviewSelect: document.querySelector("#timezone-preview-select"),
   retreatDateRange: document.querySelector("#retreat-date-range"),
   statusLabel: document.querySelector("#status-label"),
   currentTitle: document.querySelector("#current-title"),
@@ -88,59 +78,18 @@ const elements = {
   nextWindow: document.querySelector("#next-window"),
   countdown: document.querySelector("#countdown"),
   countdownNote: document.querySelector("#countdown-note"),
-  scheduleDay: document.querySelector("#schedule-day"),
   scheduleTitle: document.querySelector("#schedule-title"),
   sourceNote: document.querySelector("#source-note"),
   scheduleTabs: document.querySelector("#schedule-tabs"),
   scheduleList: document.querySelector("#schedule-list"),
 };
 
-const deviceTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-const isLocalPreview = isLocalViewingMode(window.location);
-let localTimeZone = deviceTimeZone;
+const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 const events = buildEvents();
 let observedSourceDate = null;
 let selectedRetreatDate = null;
 let followsCurrentRetreatDay = true;
 let showCountdownSeconds = false;
-
-function isLocalViewingMode(location) {
-  if (location.protocol === "file:" || location.hostname === "") return true;
-  if (location.protocol !== "http:" && location.protocol !== "https:") return false;
-
-  const hostname = location.hostname.toLowerCase();
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-}
-
-function readStoredTimeZoneOption() {
-  if (!isLocalPreview) return "device";
-
-  try {
-    const storedOption = localStorage.getItem(TIME_ZONE_PREVIEW_STORAGE_KEY);
-    return TIME_ZONE_OPTIONS.has(storedOption) ? storedOption : "device";
-  } catch (_) {
-    return "device";
-  }
-}
-
-function initializeTimeZonePreview() {
-  if (!isLocalPreview) return;
-
-  const selectedOption = readStoredTimeZoneOption();
-  localTimeZone = selectedOption === "device" ? deviceTimeZone : selectedOption;
-  elements.timeZonePreviewSelect.value = selectedOption;
-  document.documentElement.dataset.localPreview = "true";
-  elements.timeZonePreview.hidden = false;
-
-  elements.timeZonePreviewSelect.addEventListener("change", () => {
-    const option = elements.timeZonePreviewSelect.value;
-    const selectedOption = TIME_ZONE_OPTIONS.has(option) ? option : "device";
-    localTimeZone = selectedOption === "device" ? deviceTimeZone : selectedOption;
-    storePreference(TIME_ZONE_PREVIEW_STORAGE_KEY, selectedOption);
-    renderSchedule(new Date());
-    renderStatus();
-  });
-}
 
 function storePreference(key, value) {
   try {
@@ -338,15 +287,6 @@ function formatTabDate(date) {
   }).format(date);
 }
 
-function formatScheduleDate(date) {
-  return new Intl.DateTimeFormat(undefined, {
-    timeZone: localTimeZone,
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  }).format(date);
-}
-
 function formatDateKeyInZone(date, timeZone) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone,
@@ -497,7 +437,6 @@ function updateScheduleSelection(now = new Date(), animate = false) {
 
   renderScheduleTabs(currentSourceDate);
   elements.scheduleList.setAttribute("aria-labelledby", `schedule-tab-${selectedDayIndex + 1}`);
-  elements.scheduleDay.textContent = `Day ${selectedDayIndex + 1} · ${formatScheduleDate(selectedEvents[0].start)}`;
   elements.scheduleTitle.textContent = "Retreat schedule";
   elements.sourceNote.innerHTML = `Times shown in <strong>${localTimeZone}</strong>.`;
 
@@ -947,7 +886,6 @@ function updateScheduleHighlights(status, now = new Date()) {
   });
 }
 
-initializeTimeZonePreview();
 initializeScheduleGestures();
 renderStatus();
 setInterval(renderStatus, 1000);
