@@ -52,6 +52,7 @@ body.has-open-map-form {
 
 main {
   min-height: 100svh;
+  overflow-x: clip;
   background-color: var(--background);
 }
 
@@ -456,6 +457,7 @@ body[data-display-tone="dim"] .map-return-link:focus-visible span {
 
 .map-frame {
   position: relative;
+  isolation: isolate;
   overflow: hidden;
   width: 100%;
   height: min(68svh, 720px);
@@ -464,6 +466,7 @@ body[data-display-tone="dim"] .map-return-link:focus-visible span {
   border-radius: 14px;
   background: #09131f;
   box-shadow: 0 22px 70px rgba(0, 0, 0, 0.32);
+  contain: paint;
 }
 
 .map-frame iframe {
@@ -471,6 +474,7 @@ body[data-display-tone="dim"] .map-return-link:focus-visible span {
   width: 100%;
   height: 100%;
   border: 0;
+  background: #09131f;
   filter: brightness(0.92) contrast(1.04) saturate(0.9);
 }
 
@@ -556,7 +560,10 @@ body[data-display-tone="dim"] .map-form-link {
 }
 
 .schedule-carousel {
+  --schedule-band-inset: max(18px, calc((100vw - 1120px) / 2));
   position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
 }
 
 .schedule-viewport {
@@ -573,9 +580,7 @@ body[data-display-tone="dim"] .map-form-link {
 }
 
 .schedule-list {
-  width: calc(100% + 12px);
-  margin-left: -12px;
-  padding-left: 12px;
+  width: 100%;
 }
 
 .schedule-step {
@@ -619,11 +624,11 @@ body[data-display-tone="bright"] .schedule-step:not(:disabled) {
 }
 
 .schedule-step-previous {
-  left: -60px;
+  left: calc(var(--schedule-band-inset) - 60px);
 }
 
 .schedule-step-next {
-  right: -60px;
+  right: calc(var(--schedule-band-inset) - 60px);
 }
 
 .schedule-step:hover,
@@ -646,11 +651,11 @@ body[data-display-tone="bright"] .schedule-step:not(:disabled) {
 
 @media (max-width: 1220px) {
   .schedule-step-previous {
-    left: -24px;
+    left: calc(var(--schedule-band-inset) - 24px);
   }
 
   .schedule-step-next {
-    right: -24px;
+    right: calc(var(--schedule-band-inset) - 24px);
   }
 }
 
@@ -664,6 +669,8 @@ body[data-display-tone="bright"] .schedule-step:not(:disabled) {
   justify-content: flex-start;
   width: 100%;
   margin-bottom: 26px;
+  padding-right: var(--schedule-band-inset);
+  padding-left: var(--schedule-band-inset);
   overscroll-behavior-x: none;
   touch-action: pan-x pan-y pinch-zoom;
 }
@@ -677,6 +684,8 @@ body[data-display-tone="bright"] .schedule-step:not(:disabled) {
 .schedule-day-panel {
   flex: 0 0 100%;
   min-width: 0;
+  padding-right: var(--schedule-band-inset);
+  padding-left: var(--schedule-band-inset);
   scroll-snap-align: start;
   scroll-snap-stop: always;
 }
@@ -1410,11 +1419,11 @@ body[data-display-tone="dim"] .session-row.is-next::before {
   }
 
   .schedule-step-previous {
-    left: -18px;
+    left: calc(var(--schedule-band-inset) - 18px);
   }
 
   .schedule-step-next {
-    right: -18px;
+    right: calc(var(--schedule-band-inset) - 18px);
   }
 
   .recording-dialog {
