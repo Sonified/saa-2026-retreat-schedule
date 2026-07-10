@@ -717,8 +717,12 @@ body[data-display-tone="dim"] .day-tab[aria-selected="true"] .day-tab-date {
   background-color: color-mix(in srgb, var(--text) 4%, transparent);
 }
 
-.session-row[data-recording-video-id]:hover .session-recording-link {
+.session-row[data-recording-video-id]:hover .session-recording-resume {
   color: var(--text);
+}
+
+.session-row[data-recording-video-id]:hover .session-recording-link {
+  color: #5a9bfa;
   text-decoration-color: currentColor;
 }
 
@@ -899,6 +903,7 @@ body[data-display-tone="dim"] .session-row.is-active::after {
   line-height: 1;
   text-decoration: none;
   white-space: nowrap;
+  transition: color 80ms ease;
 }
 
 .session-recording-resume:hover,

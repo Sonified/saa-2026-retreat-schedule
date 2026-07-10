@@ -625,10 +625,29 @@ function getRecordingProgress() {
 }
 
 function getRecordingResumeTime(videoId) {
-  const entry = getRecordingProgress()[videoId];
-  if (entry?.completed) return 0;
-
+  const progress = getRecordingProgress();
+  const entry = progress[videoId];
   const seconds = Number(entry?.seconds);
+  const duration = Number(entry?.duration);
+  const shouldStartCompletedReplay = entry?.completed === true
+    && (entry.restartOnNextOpen === true
+      || (entry.restartOnNextOpen === undefined
+        && Number.isFinite(duration)
+        && duration > 0
+        && seconds >= duration - 1));
+
+  if (shouldStartCompletedReplay) {
+    progress[videoId] = {
+      ...entry,
+      seconds: 0,
+      restartOnNextOpen: false,
+      updatedAt: Date.now(),
+    };
+    storePreference(RECORDING_PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+    updateRecordingProgressDisplays(videoId);
+    return 0;
+  }
+
   return Number.isFinite(seconds) && seconds >= 5 ? seconds : 0;
 }
 
@@ -654,12 +673,10 @@ function updateRecordingProgressDisplays(videoId = null) {
     const seconds = Number(entry?.seconds);
     const duration = Number(entry?.duration);
     const isComplete = entry?.completed === true;
-    const hasProgress = !isComplete && Number.isFinite(seconds) && seconds >= 5;
-    const percentage = isComplete
-      ? 100
-      : hasProgress && Number.isFinite(duration) && duration > 0
-        ? Math.min(100, Math.max(0, (seconds / duration) * 100))
-        : 0;
+    const hasProgress = Number.isFinite(seconds) && seconds >= 5;
+    const percentage = hasProgress && Number.isFinite(duration) && duration > 0
+      ? Math.min(100, Math.max(0, (seconds / duration) * 100))
+      : 0;
     const resumeLabel = row.querySelector(".session-recording-resume");
 
     row.classList.toggle("has-recording-progress", percentage > 0);
@@ -693,13 +710,13 @@ function storeRecordingProgress(videoId, seconds, duration) {
   if (!videoId || !Number.isFinite(seconds) || seconds < 5) return;
 
   const progress = getRecordingProgress();
-  if (progress[videoId]?.completed) return;
+  const isComplete = progress[videoId]?.completed === true;
 
   const completionWindow = Number.isFinite(duration) && duration > 0
     ? Math.min(30, duration * 0.05)
     : 0;
 
-  if (completionWindow && duration - seconds <= completionWindow) {
+  if (!isComplete && completionWindow && duration - seconds <= completionWindow) {
     clearRecordingProgress(videoId);
     return;
   }
@@ -707,6 +724,8 @@ function storeRecordingProgress(videoId, seconds, duration) {
   progress[videoId] = {
     seconds: Math.floor(seconds),
     duration: Number.isFinite(duration) ? Math.floor(duration) : 0,
+    completed: isComplete,
+    restartOnNextOpen: false,
     updatedAt: Date.now(),
   };
   storePreference(RECORDING_PROGRESS_STORAGE_KEY, JSON.stringify(progress));
@@ -725,6 +744,7 @@ function storeRecordingCompletion(videoId, duration) {
     seconds: completedDuration,
     duration: completedDuration,
     completed: true,
+    restartOnNextOpen: true,
     updatedAt: Date.now(),
   };
   storePreference(RECORDING_PROGRESS_STORAGE_KEY, JSON.stringify(progress));
