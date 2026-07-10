@@ -677,22 +677,17 @@ body[data-display-tone="dim"] .session-row.is-active::after {
 }
 
 .session-recording-link {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0.38em;
-  align-items: baseline;
   color: var(--recording-link);
-  text-decoration: none;
-}
-
-.recording-suffix {
-  font-size: 0.72em;
-  font-weight: 450;
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 42%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 
 .session-recording-link:hover,
 .session-recording-link:focus-visible {
   color: var(--text);
+  text-decoration-color: currentColor;
 }
 
 .session-recording-link:focus-visible {
