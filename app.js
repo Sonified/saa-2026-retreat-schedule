@@ -3,6 +3,10 @@ const DISPLAY_TONE_STORAGE_KEY = "retreat-display-tone-v2";
 const SECONDS_VISIBILITY_STORAGE_KEY = "retreat-seconds-visibility-v2";
 const SCHEDULE_SELECTION_STORAGE_KEY = "retreat-schedule-selection-v1";
 const RECORDING_PROGRESS_STORAGE_KEY = "retreat-recording-progress-v1";
+const RECORDINGS_CACHE_STORAGE_KEY = "retreat-recordings-cache-v1";
+const RECORDINGS_DOCUMENT_EXPORT_URL = "https://docs.google.com/document/d/1rkIvPc6x3rBdop8l-StP5VZ-79uowX2yZBSSRTDqC5E/export?format=txt";
+const RECORDINGS_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+const RECORDINGS_REFRESH_WINDOW_MS = 60 * 1000;
 const RETREAT_DATES = [
   { date: "2026-07-08", template: "full" },
   { date: "2026-07-09", template: "full" },
@@ -31,6 +35,12 @@ const RECORDED_SESSION_NAMES = new Set([
   "Talk",
   "Q&A",
   "Poetry",
+]);
+const RECORDING_DOCUMENT_SECTIONS = new Map([
+  ["guided meditations", "Guided Meditation"],
+  ["talks", "Talk"],
+  ["q&a", "Q&A"],
+  ["poetry", "Poetry"],
 ]);
 
 const FULL_DAY = [
@@ -91,19 +101,57 @@ const elements = {
   recordingDialogTitle: document.querySelector("#recording-dialog-title"),
   recordingDialogClose: document.querySelector("#recording-dialog-close"),
   recordingPlayerMount: document.querySelector("#recording-player-mount"),
+  mapFormLink: document.querySelector(".map-form-link"),
+  mapFormDialog: document.querySelector("#map-form-dialog"),
+  mapFormDialogClose: document.querySelector("#map-form-dialog-close"),
 };
 
 const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+loadCachedRecordings();
 const events = buildEvents();
 let observedSourceDate = null;
 let selectedRetreatDate = null;
 let showCountdownSeconds = false;
+let recordingsRefreshTimer = null;
+let recordingsRefreshPromise = null;
 
 function storePreference(key, value) {
   try {
     localStorage.setItem(key, value);
   } catch (_) {
     // The controls still work when storage is unavailable.
+  }
+}
+
+function mergeRecordingUrls(recordings) {
+  if (!recordings || typeof recordings !== "object" || Array.isArray(recordings)) return false;
+
+  let hasUpdates = false;
+
+  Object.entries(recordings).forEach(([sourceDate, sessions]) => {
+    const isRetreatDate = RETREAT_DATES.some((retreatDay) => retreatDay.date === sourceDate);
+    if (!isRetreatDate || !sessions || typeof sessions !== "object" || Array.isArray(sessions)) return;
+
+    Object.entries(sessions).forEach(([sessionName, recordingUrl]) => {
+      if (!RECORDED_SESSION_NAMES.has(sessionName)
+        || typeof recordingUrl !== "string"
+        || !getYouTubeVideoId(recordingUrl)
+        || RECORDINGS[sourceDate]?.[sessionName] === recordingUrl) return;
+
+      RECORDINGS[sourceDate] ||= {};
+      RECORDINGS[sourceDate][sessionName] = recordingUrl;
+      hasUpdates = true;
+    });
+  });
+
+  return hasUpdates;
+}
+
+function loadCachedRecordings() {
+  try {
+    mergeRecordingUrls(JSON.parse(localStorage.getItem(RECORDINGS_CACHE_STORAGE_KEY)));
+  } catch (_) {
+    // Coded recording links remain the fallback if cached data is unavailable.
   }
 }
 
@@ -195,6 +243,112 @@ function buildEvents() {
       };
     });
   }).sort((a, b) => a.start - b.start);
+}
+
+function parseRecordingDocument(documentText) {
+  const parsedRecordings = {};
+  let sessionName = null;
+
+  documentText.split(/\r?\n/).forEach((rawLine) => {
+    const line = rawLine.trim();
+    const sectionName = RECORDING_DOCUMENT_SECTIONS.get(line.toLowerCase());
+
+    if (sectionName) {
+      sessionName = sectionName;
+      return;
+    }
+
+    if (!sessionName) return;
+
+    const dayRecording = line.match(
+      /^Day\s+(\d+)\b.*?(https?:\/\/(?:www\.)?(?:youtu\.be|youtube\.com)\/\S+)/i
+    );
+    if (!dayRecording) return;
+
+    const dayIndex = Number(dayRecording[1]) - 1;
+    const retreatDay = RETREAT_DATES[dayIndex];
+    const recordingUrl = dayRecording[2].replace(/[),.;\]]+$/, "");
+    if (!retreatDay || !getYouTubeVideoId(recordingUrl)) return;
+
+    parsedRecordings[retreatDay.date] ||= {};
+    parsedRecordings[retreatDay.date][sessionName] = recordingUrl;
+  });
+
+  return parsedRecordings;
+}
+
+function applyRecordingDocument(recordings) {
+  const hasUpdates = mergeRecordingUrls(recordings);
+  if (!hasUpdates) return;
+
+  storePreference(RECORDINGS_CACHE_STORAGE_KEY, JSON.stringify(RECORDINGS));
+  events.forEach((event) => {
+    event.recordingUrl = RECORDINGS[event.sourceDate]?.[event.name] || null;
+  });
+  renderSchedule(new Date());
+}
+
+async function refreshRecordingsFromDocument() {
+  if (recordingsRefreshPromise) return recordingsRefreshPromise;
+
+  recordingsRefreshPromise = (async () => {
+    const response = await fetch(RECORDINGS_DOCUMENT_EXPORT_URL, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Recording document request failed: ${response.status}`);
+
+    applyRecordingDocument(parseRecordingDocument(await response.text()));
+  })();
+
+  try {
+    await recordingsRefreshPromise;
+  } catch (_) {
+    // Coded recording links remain available until the next scheduled check.
+  } finally {
+    recordingsRefreshPromise = null;
+  }
+}
+
+function getNextRecordingsRefreshBoundary(now) {
+  const currentBoundary = Math.floor(now / RECORDINGS_REFRESH_INTERVAL_MS)
+    * RECORDINGS_REFRESH_INTERVAL_MS;
+
+  return now < currentBoundary + RECORDINGS_REFRESH_WINDOW_MS
+    ? currentBoundary
+    : currentBoundary + RECORDINGS_REFRESH_INTERVAL_MS;
+}
+
+function scheduleNextRecordingsRefresh(skipCurrentWindow = false) {
+  clearTimeout(recordingsRefreshTimer);
+  recordingsRefreshTimer = null;
+  if (document.visibilityState === "hidden") return;
+
+  const now = Date.now();
+  const currentBoundary = Math.floor(now / RECORDINGS_REFRESH_INTERVAL_MS)
+    * RECORDINGS_REFRESH_INTERVAL_MS;
+  const isInsideCurrentWindow = now < currentBoundary + RECORDINGS_REFRESH_WINDOW_MS;
+  const boundary = skipCurrentWindow && isInsideCurrentWindow
+    ? currentBoundary + RECORDINGS_REFRESH_INTERVAL_MS
+    : getNextRecordingsRefreshBoundary(now);
+  const windowEnd = boundary + RECORDINGS_REFRESH_WINDOW_MS;
+  const availableWindowStart = Math.max(now, boundary);
+  const refreshAt = availableWindowStart
+    + Math.random() * Math.max(0, windowEnd - availableWindowStart);
+
+  recordingsRefreshTimer = setTimeout(async () => {
+    const firedAt = Date.now();
+    if (document.visibilityState === "visible"
+      && firedAt >= boundary
+      && firedAt < windowEnd) {
+      await refreshRecordingsFromDocument();
+    }
+
+    scheduleNextRecordingsRefresh(true);
+  }, Math.max(0, refreshAt - now));
+}
+
+async function initializeRecordingsRefresh() {
+  document.addEventListener("visibilitychange", () => scheduleNextRecordingsRefresh());
+  await refreshRecordingsFromDocument();
+  scheduleNextRecordingsRefresh(true);
 }
 
 function getTimeZoneOffset(date, timeZone) {
@@ -962,6 +1116,65 @@ function initializeRecordingDialog() {
   window.addEventListener("pagehide", saveProgress);
 }
 
+function initializeMapFormDialog() {
+  let restoreTriggerFocus = false;
+  let closeTimer = null;
+
+  const closeDialog = () => {
+    if (!elements.mapFormDialog.open
+      || elements.mapFormDialog.classList.contains("is-closing")) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      elements.mapFormDialog.close();
+      return;
+    }
+
+    elements.mapFormDialog.classList.add("is-closing");
+    closeTimer = setTimeout(() => elements.mapFormDialog.close(), 260);
+  };
+
+  elements.mapFormLink.addEventListener("click", (event) => {
+    if (typeof elements.mapFormDialog.showModal !== "function") return;
+
+    event.preventDefault();
+    restoreTriggerFocus = event.detail === 0;
+    document.body.classList.add("has-open-map-form");
+    elements.mapFormDialog.showModal();
+    elements.mapFormDialog.focus({ preventScroll: true });
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !elements.mapFormDialog.open) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closeDialog();
+  }, { capture: true });
+
+  elements.mapFormDialogClose.form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    closeDialog();
+  });
+  elements.mapFormDialog.addEventListener("click", (event) => {
+    if (event.target === elements.mapFormDialog) closeDialog();
+  });
+  elements.mapFormDialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeDialog();
+  });
+  elements.mapFormDialog.addEventListener("close", () => {
+    clearTimeout(closeTimer);
+    closeTimer = null;
+    elements.mapFormDialog.classList.remove("is-closing");
+    document.body.classList.remove("has-open-map-form");
+    if (restoreTriggerFocus) {
+      elements.mapFormLink.focus();
+    } else {
+      elements.mapFormLink.blur();
+    }
+    restoreTriggerFocus = false;
+  });
+}
+
 function initializeScheduleScrolling() {
   let scrollEndTimer = null;
   let lastPanelWidth = 0;
@@ -1046,7 +1259,7 @@ function initializeScheduleScrolling() {
   window.addEventListener("scrollend", clearVerticalPageTarget);
 
   window.addEventListener("keydown", (event) => {
-    if (elements.recordingDialog.open) return;
+    if (elements.recordingDialog.open || elements.mapFormDialog.open) return;
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
 
     const eventTarget = event.target instanceof Element ? event.target : null;
@@ -1055,7 +1268,27 @@ function initializeScheduleScrolling() {
     if (event.key === "ArrowUp" || event.key === "ArrowDown") {
       event.preventDefault();
 
-      const targetId = event.key === "ArrowUp" ? "timer" : "schedule";
+      const pageIds = ["timer", "schedule", "community-map"];
+      const viewportCenter = window.innerHeight / 2;
+      const currentPageIndex = pageIds.reduce((closestIndex, pageId, index) => {
+        const bounds = document.querySelector(`#${pageId}`)?.getBoundingClientRect();
+        if (!bounds) return closestIndex;
+
+        const pageCenterDistance = Math.abs(bounds.top + bounds.height / 2 - viewportCenter);
+        const closestBounds = document.querySelector(`#${pageIds[closestIndex]}`)
+          ?.getBoundingClientRect();
+        const closestDistance = closestBounds
+          ? Math.abs(closestBounds.top + closestBounds.height / 2 - viewportCenter)
+          : Number.POSITIVE_INFINITY;
+
+        return pageCenterDistance < closestDistance ? index : closestIndex;
+      }, 0);
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      const targetPageIndex = Math.min(
+        pageIds.length - 1,
+        Math.max(0, currentPageIndex + direction)
+      );
+      const targetId = pageIds[targetPageIndex];
       if (verticalPageTarget === targetId) return;
 
       verticalPageTarget = targetId;
@@ -1392,5 +1625,7 @@ function updateScheduleHighlights(status, now = new Date()) {
 
 initializeScheduleScrolling();
 initializeRecordingDialog();
+initializeMapFormDialog();
 renderStatus();
+initializeRecordingsRefresh();
 setInterval(renderStatus, 1000);

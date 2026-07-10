@@ -133,6 +133,39 @@
             <span aria-hidden="true"></span>
           </button>
         </div>
+
+        <a class="map-link" href="#community-map">
+          See retreat map
+          <span aria-hidden="true">↓</span>
+        </a>
+      </section>
+
+      <section id="community-map" class="map-panel" aria-label="Retreat community map">
+        <a class="map-return-link" href="#schedule">
+          Return to schedule
+          <span aria-hidden="true">↑</span>
+        </a>
+
+        <div class="map-content">
+          <div class="map-frame">
+            <iframe
+              src="https://www.google.com/maps/d/embed?mid=1ZzySLJURuUl3bzsVa3RlJYuOS9TfVWc&amp;ehbc=2E312F&amp;ll=30%2C0&amp;z=2"
+              title="Map of where retreat attendees are joining from"
+              loading="lazy"
+              referrerpolicy="strict-origin-when-cross-origin"
+              allowfullscreen
+            ></iframe>
+          </div>
+
+          <a
+            class="map-form-link"
+            href="https://forms.gle/ouHUpKDkfc61pzi46"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Add your information
+          </a>
+        </div>
       </section>
     </main>
 
@@ -160,6 +193,35 @@
         <div id="recording-player-mount" class="recording-player-mount"></div>
       </div>
 
+    </dialog>
+
+    <dialog
+      id="map-form-dialog"
+      class="map-form-dialog"
+      aria-labelledby="map-form-dialog-title"
+      tabindex="-1"
+    >
+      <div class="recording-dialog-header">
+        <h2 id="map-form-dialog-title">Add your information</h2>
+        <form method="dialog">
+          <button
+            id="map-form-dialog-close"
+            class="recording-dialog-close"
+            type="submit"
+            aria-label="Close form"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </form>
+      </div>
+
+      <div class="map-form-embed">
+        <iframe
+          src="https://docs.google.com/forms/d/e/1FAIpQLScMhweGZKjFKavVUVwovbf5Uk5cnS2mWKGGnGv1MXa0ktAvZw/viewform?embedded=true"
+          title="Add your information to the retreat map"
+          loading="lazy"
+        ></iframe>
+      </div>
     </dialog>
 
     <script src="./app.js"></script>
