@@ -428,7 +428,7 @@ body[data-display-tone="dim"] .map-return-link:focus-visible span {
   min-height: 100svh;
   margin: 0 auto;
   background-color: var(--background);
-  padding: 46px 0;
+  padding: 46px 0 132px;
   border-top: 1px solid var(--line);
   scroll-snap-align: start;
   scroll-snap-stop: always;
@@ -1521,7 +1521,7 @@ body[data-display-tone="dim"] .session-row.is-next::before {
   .schedule-panel {
     justify-content: flex-start;
     padding-top: 52px;
-    padding-bottom: 24px;
+    padding-bottom: 76px;
   }
 
   .schedule-heading {
