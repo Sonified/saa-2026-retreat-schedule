@@ -29,12 +29,21 @@
   </head>
   <body>
     <header class="site-header">
+      <div id="timezone-preview" class="timezone-preview" hidden>
+        <label for="timezone-preview-select">View:</label>
+        <select id="timezone-preview-select">
+          <option value="device">Device Local</option>
+          <option value="America/Los_Angeles">LA / PT</option>
+          <option value="America/New_York">New York</option>
+          <option value="Europe/London">London</option>
+          <option value="Australia/Sydney">Australia / Sydney</option>
+        </select>
+      </div>
       <p class="retreat-title">
         Simply Always Awake Online Retreat
         <span aria-hidden="true">·</span>
-        <span>July 8–12, 2026</span>
+        <span id="retreat-date-range">July 8–12, 2026</span>
       </p>
-      <time id="local-clock" class="header-clock" datetime=""></time>
     </header>
 
     <div class="display-controls">
@@ -80,7 +89,7 @@
           </div>
 
           <a class="schedule-link" href="#schedule">
-            View the schedule for today
+            Explore the retreat schedule
             <span aria-hidden="true">↓</span>
           </a>
         </div>
@@ -89,13 +98,25 @@
       <section id="schedule" class="schedule-panel" aria-labelledby="schedule-title">
         <div class="schedule-heading">
           <div>
-            <p id="schedule-day" class="section-label">Today</p>
-            <h2 id="schedule-title">Today’s schedule</h2>
+            <p id="schedule-day" class="section-label">Retreat schedule</p>
+            <h2 id="schedule-title">Choose a day</h2>
           </div>
           <p id="source-note" class="source-note"></p>
         </div>
 
-        <div id="schedule-list" class="schedule-list"></div>
+        <div
+          id="schedule-tabs"
+          class="schedule-tabs"
+          role="tablist"
+          aria-label="Retreat days"
+        ></div>
+
+        <div
+          id="schedule-list"
+          class="schedule-list"
+          role="tabpanel"
+          aria-live="polite"
+        ></div>
       </section>
     </main>
 

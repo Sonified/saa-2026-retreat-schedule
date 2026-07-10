@@ -6,7 +6,9 @@ The published schedule is in Pacific time. The app converts it to each visitor's
 
 - the current schedule item
 - a large countdown to the next item
-- today's Pacific-time retreat schedule, converted to the visitor's local date and time
+- day tabs that automatically open the current retreat day
+- every Pacific-time retreat schedule, converted to the visitor's local date and time
+- links to session recordings as they become available
 
 ## Edit the Schedule
 
@@ -15,6 +17,7 @@ The schedule lives in `app.js`:
 - `SOURCE_TIME_ZONE` sets the original schedule time zone.
 - `RETREAT_DATES` sets the retreat dates.
 - `FULL_DAY` and `SUNDAY` set the session starts and labels.
+- `RECORDINGS` maps a retreat date and session name to its YouTube URL. Add new links there as recordings become available.
 
 ## GitHub Pages
 
