@@ -107,6 +107,7 @@ const elements = {
   fullscreenToggle: document.querySelector("#fullscreen-toggle"),
   displayToneControl: document.querySelector(".display-tone-control"),
   displayToneIconToggle: document.querySelector("#display-tone-icon-toggle"),
+  floatLiveButton: document.querySelector("#float-live-button"),
 };
 
 const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -117,6 +118,272 @@ let selectedRetreatDate = null;
 let showCountdownSeconds = false;
 let recordingsRefreshTimer = null;
 let recordingsRefreshPromise = null;
+let floatingLiveWindow = null;
+
+const FLOATING_LIVE_STYLES = `
+  :root {
+    color-scheme: dark;
+    --background: #080911;
+    --live-text: #dcd7df;
+    --countdown-text: #bbb8c3;
+    --muted: #9998a5;
+    --accent: #c69a63;
+    --dim-live-text: #777580;
+    --dim-countdown-text: #686772;
+    --dim-accent: #806342;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html,
+  body {
+    width: 100%;
+    min-width: 260px;
+    min-height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--background);
+    color: var(--live-text);
+  }
+
+  body::before {
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 1px;
+    background: linear-gradient(90deg, #49315f, #80566e 45%, #1a6970);
+    content: "";
+  }
+
+  p,
+  h1 { margin-top: 0; }
+
+  .floating-live-view {
+    display: grid;
+    min-height: 100dvh;
+    padding: 30px 28px 34px;
+    text-align: center;
+    place-content: center;
+  }
+
+  .floating-status-label {
+    margin-bottom: 16px;
+    color: var(--accent);
+    font-size: 0.82rem;
+    font-weight: 750;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .floating-current-title {
+    max-width: 680px;
+    margin-right: auto;
+    margin-bottom: 14px;
+    margin-left: auto;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(2rem, 10vw, 3.4rem);
+    font-weight: 400;
+    letter-spacing: -0.04em;
+    line-height: 0.94;
+    text-wrap: balance;
+  }
+
+  .floating-current-window {
+    min-height: 1.4em;
+    margin-bottom: 0;
+    color: var(--muted);
+    font-size: 0.88rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .floating-countdown-wrap { margin-top: 32px; }
+
+  .floating-countdown {
+    margin-bottom: 14px;
+    color: var(--countdown-text);
+    font-size: clamp(3.6rem, 20vw, 6.4rem);
+    font-variant-numeric: lining-nums tabular-nums;
+    font-weight: 300;
+    font-feature-settings: "lnum" 1, "tnum" 1;
+    letter-spacing: -0.04em;
+    line-height: 0.88;
+    white-space: nowrap;
+  }
+
+  .duration-unit {
+    font-size: 0.72em;
+    letter-spacing: 0;
+  }
+
+  .floating-countdown-note {
+    margin-bottom: 0;
+    color: var(--muted);
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.1rem;
+    line-height: 1.35;
+  }
+
+  .floating-countdown-note strong {
+    color: var(--accent);
+    font-weight: 400;
+  }
+
+  .floating-countdown-note #next-window::before { content: " · "; }
+  [hidden] { display: none !important; }
+
+  html[data-display-tone="dim"] .floating-current-title,
+  html[data-display-tone="dim"] .floating-current-window,
+  html[data-display-tone="dim"] .floating-countdown-note,
+  html[data-display-tone="dim"] .floating-countdown-note strong,
+  html[data-display-tone="dim"] .floating-countdown-note #next-window {
+    color: var(--dim-live-text);
+  }
+
+  html[data-display-tone="dim"] .floating-status-label,
+  html[data-display-tone="dim"] .floating-countdown-note strong {
+    color: var(--dim-accent);
+  }
+
+  html[data-display-tone="dim"] .floating-countdown {
+    color: var(--dim-countdown-text);
+  }
+
+  @media (max-height: 320px) {
+    .floating-live-view { padding: 20px 24px 24px; }
+    .floating-status-label { margin-bottom: 10px; }
+    .floating-current-title { font-size: clamp(1.7rem, 8vw, 2.6rem); }
+    .floating-countdown-wrap { margin-top: 20px; }
+    .floating-countdown { font-size: clamp(3rem, 16vw, 5rem); }
+  }
+`;
+
+function syncFloatingLiveButton() {
+  if (!elements.floatLiveButton) return;
+
+  const isOpen = Boolean(floatingLiveWindow && !floatingLiveWindow.closed);
+  const actionLabel = isOpen
+    ? "Close floating happening now window"
+    : "Open happening now in a floating window";
+
+  elements.floatLiveButton.setAttribute("aria-label", actionLabel);
+  elements.floatLiveButton.setAttribute("aria-pressed", String(isOpen));
+  elements.floatLiveButton.dataset.tooltip = isOpen
+    ? "Close floating view"
+    : "Open floating view";
+}
+
+function copyLiveValue(source, target) {
+  if (!source || !target) return;
+
+  target.replaceChildren(...Array.from(source.childNodes, (node) => node.cloneNode(true)));
+  target.hidden = source.hidden;
+
+  const ariaLabel = source.getAttribute("aria-label");
+  if (ariaLabel) {
+    target.setAttribute("aria-label", ariaLabel);
+  } else {
+    target.removeAttribute("aria-label");
+  }
+}
+
+function syncFloatingLiveView() {
+  if (!floatingLiveWindow || floatingLiveWindow.closed) {
+    floatingLiveWindow = null;
+    syncFloatingLiveButton();
+    return;
+  }
+
+  const floatingDocument = floatingLiveWindow.document;
+  floatingDocument.documentElement.dataset.displayTone = document.body.dataset.displayTone === "dim"
+    ? "dim"
+    : "bright";
+
+  [
+    [elements.statusLabel, floatingDocument.querySelector(".floating-status-label")],
+    [elements.currentTitle, floatingDocument.querySelector(".floating-current-title")],
+    [elements.currentWindow, floatingDocument.querySelector(".floating-current-window")],
+    [elements.countdown, floatingDocument.querySelector(".floating-countdown")],
+    [elements.countdownNote, floatingDocument.querySelector(".floating-countdown-note")],
+  ].forEach(([source, target]) => copyLiveValue(source, target));
+}
+
+function buildFloatingLiveView(pictureInPictureWindow) {
+  const floatingDocument = pictureInPictureWindow.document;
+  const charset = floatingDocument.createElement("meta");
+  const title = floatingDocument.createElement("title");
+  const style = floatingDocument.createElement("style");
+  const liveView = floatingDocument.createElement("main");
+
+  charset.setAttribute("charset", "utf-8");
+  title.textContent = "Simply Always Awake — Happening Now";
+  style.textContent = FLOATING_LIVE_STYLES;
+  liveView.className = "floating-live-view";
+  liveView.innerHTML = `
+    <p class="floating-status-label"></p>
+    <h1 class="floating-current-title"></h1>
+    <p class="floating-current-window"></p>
+    <div class="floating-countdown-wrap">
+      <p class="floating-countdown" role="timer" aria-atomic="true"></p>
+      <p class="floating-countdown-note"></p>
+    </div>
+  `;
+
+  floatingDocument.documentElement.lang = "en";
+  floatingDocument.head.replaceChildren(charset, title, style);
+  floatingDocument.body.replaceChildren(liveView);
+}
+
+function initializeFloatingLiveView() {
+  const button = elements.floatLiveButton;
+  const pictureInPicture = window.documentPictureInPicture;
+  const isSupported = button
+    && pictureInPicture
+    && typeof pictureInPicture.requestWindow === "function";
+
+  if (!isSupported) return;
+
+  button.hidden = false;
+  syncFloatingLiveButton();
+
+  button.addEventListener("click", async () => {
+    if (floatingLiveWindow && !floatingLiveWindow.closed) {
+      floatingLiveWindow.close();
+      floatingLiveWindow = null;
+      syncFloatingLiveButton();
+      return;
+    }
+
+    button.disabled = true;
+
+    try {
+      const pictureInPictureWindow = await pictureInPicture.requestWindow({
+        width: 460,
+        height: 360,
+      });
+
+      floatingLiveWindow = pictureInPictureWindow;
+      buildFloatingLiveView(pictureInPictureWindow);
+      syncFloatingLiveView();
+      syncFloatingLiveButton();
+
+      pictureInPictureWindow.addEventListener("pagehide", () => {
+        if (floatingLiveWindow === pictureInPictureWindow) {
+          floatingLiveWindow = null;
+          syncFloatingLiveButton();
+        }
+      }, { once: true });
+    } catch (error) {
+      console.error("Unable to open the floating live view.", error);
+    } finally {
+      button.disabled = false;
+      syncFloatingLiveButton();
+    }
+  });
+}
 
 function initializeFullscreenToggle() {
   const toggle = elements.fullscreenToggle;
@@ -250,6 +517,8 @@ function setDisplayTone(tone, persist = false) {
   if (persist) {
     storePreference(DISPLAY_TONE_STORAGE_KEY, resolvedTone);
   }
+
+  syncFloatingLiveView();
 }
 
 setDisplayTone(document.documentElement.dataset.displayTone);
@@ -1530,6 +1799,7 @@ function renderStatus() {
   }
 
   updateScheduleHighlights(status, now);
+  syncFloatingLiveView();
 }
 
 function renderRetreatDayPanel(retreatDay, dayIndex) {
@@ -1696,6 +1966,7 @@ initializeRecordingDialog();
 initializeMapFormDialog();
 initializeFullscreenToggle();
 initializeToneIconControl();
+initializeFloatingLiveView();
 renderStatus();
 initializeRecordingsRefresh();
 setInterval(renderStatus, 1000);

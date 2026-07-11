@@ -106,7 +106,24 @@
     <main>
       <section id="timer" class="live-panel" aria-labelledby="current-title">
         <div class="live-content">
-          <p id="status-label" class="section-label">Happening now</p>
+          <div class="status-heading">
+            <p id="status-label" class="section-label">Happening now</p>
+            <button
+              id="float-live-button"
+              class="float-live-button"
+              type="button"
+              aria-label="Open happening now in a floating window"
+              aria-pressed="false"
+              data-tooltip="Open floating view"
+              hidden
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M13 5h6v6"></path>
+                <path d="m19 5-8 8"></path>
+                <path d="M17 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h5"></path>
+              </svg>
+            </button>
+          </div>
           <h1 id="current-title">Loading…</h1>
           <p id="current-window" class="current-window"></p>
 

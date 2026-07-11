@@ -134,6 +134,68 @@ html[data-display-tone="dim"] .retreat-title {
   transition: color 240ms ease;
 }
 
+.status-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 18px;
+}
+
+.status-heading .section-label {
+  margin-bottom: 0;
+}
+
+.float-live-button {
+  position: relative;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(198, 154, 99, 0.34);
+  border-radius: 50%;
+  background: rgba(198, 154, 99, 0.06);
+  color: var(--accent);
+  cursor: pointer;
+  place-items: center;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+.float-live-button[hidden] {
+  display: none;
+}
+
+.float-live-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.float-live-button svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.65;
+}
+
+.float-live-button:hover {
+  border-color: rgba(198, 154, 99, 0.62);
+  background: rgba(198, 154, 99, 0.13);
+  color: #dbb27d;
+}
+
+.float-live-button:focus-visible {
+  outline: 2px solid var(--active);
+  outline-offset: 3px;
+}
+
+body[data-display-tone="dim"] .float-live-button {
+  border-color: rgba(128, 99, 66, 0.34);
+  background: rgba(128, 99, 66, 0.05);
+  color: var(--dim-accent);
+}
+
 #status-label {
   font-size: 1rem;
 }
@@ -320,6 +382,7 @@ body[data-display-tone="dim"] .display-tone-icon-toggle[data-tone-action="bright
 }
 
 .fullscreen-toggle::after,
+.float-live-button::after,
 .display-tone-icon-toggle::after {
   position: absolute;
   bottom: calc(100% + 8px);
@@ -350,8 +413,15 @@ body[data-display-tone="dim"] .display-tone-icon-toggle[data-tone-action="bright
   right: 0;
 }
 
+.float-live-button::after {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .fullscreen-toggle:hover::after,
 .fullscreen-toggle:focus-visible::after,
+.float-live-button:hover::after,
+.float-live-button:focus-visible::after,
 .display-tone-icon-toggle:hover::after,
 .display-tone-icon-toggle:focus-visible::after {
   opacity: 1;
