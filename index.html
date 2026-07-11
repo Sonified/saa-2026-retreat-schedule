@@ -193,36 +193,71 @@
         </div>
 
         <a class="map-link" href="#community-map">
-          See retreat map
+          See resources &amp; map
           <span aria-hidden="true">↓</span>
         </a>
       </section>
 
-      <section id="community-map" class="map-panel" aria-label="Retreat community map">
+      <section
+        id="community-map"
+        class="map-panel"
+        aria-label="Retreat community map, links, and resources"
+      >
         <a class="map-return-link" href="#schedule">
           Return to schedule
           <span aria-hidden="true">↑</span>
         </a>
 
         <div class="map-content">
-          <div class="map-frame">
-            <iframe
-              src="https://www.google.com/maps/d/embed?mid=1ZzySLJURuUl3bzsVa3RlJYuOS9TfVWc&amp;ehbc=2E312F&amp;ll=30%2C0&amp;z=2"
-              title="Map of where retreat attendees are joining from"
-              loading="lazy"
-              referrerpolicy="strict-origin-when-cross-origin"
-              allowfullscreen
-            ></iframe>
-          </div>
+          <div class="map-layout">
+            <section class="resources-panel" aria-labelledby="resources-title">
+              <p class="section-label resources-kicker">Stay connected</p>
+              <h2 id="resources-title">Links and resources</h2>
 
-          <a
-            class="map-form-link"
-            href="https://forms.gle/ouHUpKDkfc61pzi46"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Add your information
-          </a>
+              <div class="resource-links">
+                <a
+                  class="resource-link"
+                  href="https://docs.google.com/document/d/1oblM3f3K2wN3qiJZohKkGhhkI2cn7WCLJmfJHr6yAaI/edit?tab=t.0"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span class="resource-link-title">Shared Document</span>
+                  <span class="resource-link-arrow" aria-hidden="true">↗</span>
+                </a>
+
+                <a
+                  class="resource-link"
+                  href="https://communitylocator.simplyalwaysawake.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span class="resource-link-title">Community Locator</span>
+                  <span class="resource-link-arrow" aria-hidden="true">↗</span>
+                </a>
+              </div>
+            </section>
+
+            <div class="map-column">
+              <div class="map-frame">
+                <iframe
+                  src="https://www.google.com/maps/d/embed?mid=1ZzySLJURuUl3bzsVa3RlJYuOS9TfVWc&amp;ehbc=2E312F&amp;ll=35%2C10&amp;z=2"
+                  title="Map of where retreat attendees are joining from"
+                  loading="lazy"
+                  referrerpolicy="strict-origin-when-cross-origin"
+                  allowfullscreen
+                ></iframe>
+              </div>
+
+              <a
+                class="map-form-link"
+                href="https://forms.gle/ouHUpKDkfc61pzi46"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Add your information
+              </a>
+            </div>
+          </div>
         </div>
       </section>
     </main>
