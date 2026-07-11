@@ -172,7 +172,7 @@ const FLOATING_LIVE_STYLES = `
   .floating-status-label {
     margin-bottom: 16px;
     color: var(--accent);
-    font-size: 0.82rem;
+    font-size: calc(0.82rem + 1pt);
     font-weight: 750;
     letter-spacing: 0.2em;
     text-transform: uppercase;
@@ -184,7 +184,7 @@ const FLOATING_LIVE_STYLES = `
     margin-bottom: 14px;
     margin-left: auto;
     font-family: Georgia, "Times New Roman", serif;
-    font-size: clamp(2rem, 10vw, 3.4rem);
+    font-size: calc(clamp(2rem, 10vw, 3.4rem) + 2pt);
     font-weight: 400;
     letter-spacing: -0.04em;
     line-height: 0.94;
@@ -195,17 +195,17 @@ const FLOATING_LIVE_STYLES = `
     min-height: 1.4em;
     margin-bottom: 0;
     color: var(--muted);
-    font-size: 0.88rem;
+    font-size: calc(0.88rem + 1pt);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 
-  .floating-countdown-wrap { margin-top: 32px; }
+  .floating-countdown-wrap { margin-top: 35px; }
 
   .floating-countdown {
     margin-bottom: 14px;
     color: var(--countdown-text);
-    font-size: clamp(3.6rem, 20vw, 6.4rem);
+    font-size: calc(clamp(3.6rem, 20vw, 6.4rem) - 2pt);
     font-variant-numeric: lining-nums tabular-nums;
     font-weight: 300;
     font-feature-settings: "lnum" 1, "tnum" 1;
@@ -223,7 +223,7 @@ const FLOATING_LIVE_STYLES = `
     margin-bottom: 0;
     color: var(--muted);
     font-family: Georgia, "Times New Roman", serif;
-    font-size: 1.1rem;
+    font-size: calc(1.1rem + 1pt);
     line-height: 1.35;
   }
 
@@ -232,7 +232,19 @@ const FLOATING_LIVE_STYLES = `
     font-weight: 400;
   }
 
-  .floating-countdown-note #next-window::before { content: " · "; }
+  .floating-countdown-note #next-title.is-lunch-free-time {
+    font-size: calc(1em + 1pt);
+  }
+
+  .floating-countdown-note #next-window {
+    display: block;
+    margin-top: 14px;
+    color: var(--muted);
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: calc(0.88rem + 1pt);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
   [hidden] { display: none !important; }
 
   html[data-display-tone="dim"] .floating-current-title,
@@ -255,9 +267,9 @@ const FLOATING_LIVE_STYLES = `
   @media (max-height: 320px) {
     .floating-live-view { padding: 20px 24px 24px; }
     .floating-status-label { margin-bottom: 10px; }
-    .floating-current-title { font-size: clamp(1.7rem, 8vw, 2.6rem); }
-    .floating-countdown-wrap { margin-top: 20px; }
-    .floating-countdown { font-size: clamp(3rem, 16vw, 5rem); }
+    .floating-current-title { font-size: calc(clamp(1.7rem, 8vw, 2.6rem) + 2pt); }
+    .floating-countdown-wrap { margin-top: 23px; }
+    .floating-countdown { font-size: calc(clamp(3rem, 16vw, 5rem) - 2pt); }
   }
 `;
 
@@ -1694,6 +1706,18 @@ function formatWindow(start, end) {
   return `${formatTime(start)}–${formatTimeWithZone(end)}`;
 }
 
+function getScheduledEventEnd(event) {
+  const eventIndex = events.indexOf(event);
+  const followingEvent = events[eventIndex + 1];
+
+  if (eventIndex < 0
+    || event.name === "Close"
+    || !followingEvent
+    || followingEvent.sourceDate !== event.sourceDate) return null;
+
+  return followingEvent.start;
+}
+
 function getDurationDisplay(milliseconds, includeSeconds = showCountdownSeconds) {
   const remainingMilliseconds = Math.max(0, milliseconds);
 
@@ -1788,12 +1812,20 @@ function renderStatus() {
 
   if (!status.next) {
     elements.nextTitle.textContent = "the end of the retreat";
+    elements.nextTitle.classList.remove("is-lunch-free-time");
     elements.nextWindow.textContent = "";
     renderDuration(elements.countdown, 0);
     elements.countdownNote.hidden = true;
   } else {
     elements.nextTitle.textContent = status.next.name;
-    elements.nextWindow.textContent = formatTimeWithZone(status.next.start);
+    elements.nextTitle.classList.toggle(
+      "is-lunch-free-time",
+      status.next.name === "Lunch / Free Time"
+    );
+    const nextEnd = getScheduledEventEnd(status.next);
+    elements.nextWindow.textContent = nextEnd
+      ? formatWindow(status.next.start, nextEnd)
+      : formatTimeWithZone(status.next.start);
     renderDuration(elements.countdown, status.next.start.getTime() - now.getTime());
     elements.countdownNote.hidden = false;
   }
