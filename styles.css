@@ -653,6 +653,7 @@ body[data-display-tone="dim"] .map-return-link:focus-visible span {
   display: grid;
   align-content: center;
   min-height: 0;
+  transform: translateY(-16px);
 }
 
 .map-frame {
