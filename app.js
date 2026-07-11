@@ -104,6 +104,9 @@ const elements = {
   mapFormLink: document.querySelector(".map-form-link"),
   mapFormDialog: document.querySelector("#map-form-dialog"),
   mapFormDialogClose: document.querySelector("#map-form-dialog-close"),
+  fullscreenToggle: document.querySelector("#fullscreen-toggle"),
+  displayToneControl: document.querySelector(".display-tone-control"),
+  displayToneIconToggle: document.querySelector("#display-tone-icon-toggle"),
 };
 
 const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -114,6 +117,60 @@ let selectedRetreatDate = null;
 let showCountdownSeconds = false;
 let recordingsRefreshTimer = null;
 let recordingsRefreshPromise = null;
+
+function isLocalViewingMode(locationObject = window.location) {
+  const hostname = locationObject.hostname.toLowerCase();
+  return locationObject.protocol === "file:"
+    || hostname === ""
+    || hostname === "localhost"
+    || hostname === "127.0.0.1"
+    || hostname === "::1"
+    || hostname === "[::1]";
+}
+
+function initializeFullscreenToggle() {
+  const toggle = elements.fullscreenToggle;
+  const root = document.documentElement;
+  const isSupported = typeof root.requestFullscreen === "function"
+    && typeof document.exitFullscreen === "function";
+
+  if (!toggle || !isLocalViewingMode() || !isSupported) return;
+
+  const syncFullscreenToggle = () => {
+    const isFullscreen = document.fullscreenElement === root;
+    toggle.querySelector(".fullscreen-toggle-text").textContent = isFullscreen
+      ? "Exit full screen"
+      : "Full screen";
+    toggle.querySelector(".fullscreen-icon-enter").hidden = isFullscreen;
+    toggle.querySelector(".fullscreen-icon-exit").hidden = !isFullscreen;
+    const actionLabel = isFullscreen ? "Exit full screen" : "Enter full screen";
+    toggle.dataset.tooltip = actionLabel;
+    toggle.setAttribute("aria-label", actionLabel);
+    toggle.setAttribute("aria-pressed", String(isFullscreen));
+  };
+
+  toggle.hidden = false;
+  syncFullscreenToggle();
+
+  toggle.addEventListener("click", async () => {
+    toggle.disabled = true;
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await root.requestFullscreen();
+      }
+    } catch (_) {
+      toggle.hidden = true;
+    } finally {
+      toggle.disabled = false;
+      syncFullscreenToggle();
+    }
+  });
+
+  document.addEventListener("fullscreenchange", syncFullscreenToggle);
+}
 
 function storePreference(key, value) {
   try {
@@ -191,6 +248,15 @@ function setDisplayTone(tone, persist = false) {
     button.setAttribute("aria-pressed", String(button.dataset.displayTone === resolvedTone));
   });
 
+  if (elements.displayToneIconToggle) {
+    const nextTone = resolvedTone === "bright" ? "dim" : "bright";
+    const actionLabel = `Switch to ${nextTone === "dim" ? "Dim" : "Bright"}`;
+    elements.displayToneIconToggle.dataset.toneAction = nextTone;
+    elements.displayToneIconToggle.dataset.tooltip = actionLabel;
+    elements.displayToneIconToggle.setAttribute("aria-label", actionLabel);
+    elements.displayToneIconToggle.setAttribute("aria-pressed", String(resolvedTone === "dim"));
+  }
+
   if (persist) {
     storePreference(DISPLAY_TONE_STORAGE_KEY, resolvedTone);
   }
@@ -200,6 +266,19 @@ setDisplayTone(document.documentElement.dataset.displayTone);
 document.querySelectorAll(".display-tone-control [data-display-tone]").forEach((button) => {
   button.addEventListener("click", () => setDisplayTone(button.dataset.displayTone, true));
 });
+
+function initializeLocalToneControl() {
+  if (!isLocalViewingMode()
+    || !elements.displayToneControl
+    || !elements.displayToneIconToggle) return;
+
+  elements.displayToneControl.hidden = true;
+  elements.displayToneIconToggle.hidden = false;
+  elements.displayToneIconToggle.addEventListener("click", () => {
+    const nextTone = document.body.dataset.displayTone === "dim" ? "bright" : "dim";
+    setDisplayTone(nextTone, true);
+  });
+}
 
 function setSecondsVisibility(visibility, persist = false, updateClocks = true) {
   showCountdownSeconds = visibility !== "hide";
@@ -1626,6 +1705,8 @@ function updateScheduleHighlights(status, now = new Date()) {
 initializeScheduleScrolling();
 initializeRecordingDialog();
 initializeMapFormDialog();
+initializeFullscreenToggle();
+initializeLocalToneControl();
 renderStatus();
 initializeRecordingsRefresh();
 setInterval(renderStatus, 1000);

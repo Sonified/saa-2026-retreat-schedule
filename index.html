@@ -46,7 +46,47 @@
         <button type="button" data-display-tone="bright" aria-pressed="true">Bright</button>
         <button type="button" data-display-tone="dim" aria-pressed="false">Dim</button>
       </div>
+      <button
+        id="display-tone-icon-toggle"
+        class="display-tone-icon-toggle"
+        type="button"
+        aria-pressed="false"
+        aria-label="Switch to Dim"
+        data-tooltip="Switch to Dim"
+        data-tone-action="dim"
+        hidden
+      >
+        <svg class="tone-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <g class="tone-icon-sun">
+            <circle cx="12" cy="12" r="3.6"></circle>
+            <path d="M12 2.2v2M12 19.8v2M2.2 12h2M19.8 12h2M5.1 5.1l1.4 1.4M17.5 17.5l1.4 1.4M18.9 5.1l-1.4 1.4M6.5 17.5l-1.4 1.4"></path>
+          </g>
+          <g class="tone-icon-moon">
+            <path d="M19.2 15.1A7.8 7.8 0 0 1 8.9 4.8 7.9 7.9 0 1 0 19.2 15.1Z"></path>
+          </g>
+        </svg>
+      </button>
     </div>
+
+    <button
+      id="fullscreen-toggle"
+      class="fullscreen-toggle"
+      type="button"
+      data-presentation="icon"
+      aria-pressed="false"
+      data-tooltip="Enter full screen"
+      hidden
+    >
+      <span class="fullscreen-toggle-text">Full screen</span>
+      <svg class="fullscreen-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <g class="fullscreen-icon-enter">
+          <path d="M8.5 4.5h-4v4M15.5 4.5h4v4M19.5 15.5v4h-4M8.5 19.5h-4v-4"></path>
+        </g>
+        <g class="fullscreen-icon-exit" hidden>
+          <path d="M4.5 8.5h4v-4M19.5 8.5h-4v-4M15.5 19.5v-4h4M8.5 15.5h-4v4"></path>
+        </g>
+      </svg>
+    </button>
 
     <script>
       (() => {
