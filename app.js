@@ -29,6 +29,16 @@ const RECORDINGS = {
     "Q&A": "https://youtu.be/Gan46Py8TlU",
     Poetry: "https://youtu.be/eAL5vdTgRB0",
   },
+  "2026-07-10": {
+    "Guided Meditation": "https://youtu.be/lY0PNt_2GIA",
+    Talk: "https://youtu.be/5v_JzROe36c",
+    "Q&A": "https://youtu.be/5aD3J1HSJOs",
+    Poetry: "https://youtu.be/gV67ur2GlU4",
+  },
+  "2026-07-11": {
+    "Guided Meditation": "https://youtu.be/S8vAKj24UKU",
+    Talk: "https://youtu.be/qe8RW5Zwge4",
+  },
 };
 const RECORDED_SESSION_NAMES = new Set([
   "Guided Meditation",
