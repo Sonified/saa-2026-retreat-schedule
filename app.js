@@ -118,23 +118,13 @@ let showCountdownSeconds = false;
 let recordingsRefreshTimer = null;
 let recordingsRefreshPromise = null;
 
-function isLocalViewingMode(locationObject = window.location) {
-  const hostname = locationObject.hostname.toLowerCase();
-  return locationObject.protocol === "file:"
-    || hostname === ""
-    || hostname === "localhost"
-    || hostname === "127.0.0.1"
-    || hostname === "::1"
-    || hostname === "[::1]";
-}
-
 function initializeFullscreenToggle() {
   const toggle = elements.fullscreenToggle;
   const root = document.documentElement;
   const isSupported = typeof root.requestFullscreen === "function"
     && typeof document.exitFullscreen === "function";
 
-  if (!toggle || !isLocalViewingMode() || !isSupported) return;
+  if (!toggle || !isSupported) return;
 
   const syncFullscreenToggle = () => {
     const isFullscreen = document.fullscreenElement === root;
@@ -267,9 +257,8 @@ document.querySelectorAll(".display-tone-control [data-display-tone]").forEach((
   button.addEventListener("click", () => setDisplayTone(button.dataset.displayTone, true));
 });
 
-function initializeLocalToneControl() {
-  if (!isLocalViewingMode()
-    || !elements.displayToneControl
+function initializeToneIconControl() {
+  if (!elements.displayToneControl
     || !elements.displayToneIconToggle) return;
 
   elements.displayToneControl.hidden = true;
@@ -1706,7 +1695,7 @@ initializeScheduleScrolling();
 initializeRecordingDialog();
 initializeMapFormDialog();
 initializeFullscreenToggle();
-initializeLocalToneControl();
+initializeToneIconControl();
 renderStatus();
 initializeRecordingsRefresh();
 setInterval(renderStatus, 1000);
