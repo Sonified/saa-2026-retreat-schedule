@@ -18,7 +18,7 @@ The schedule lives in `app.js`:
 - `RETREAT_DATES` sets the retreat dates.
 - `FULL_DAY` and `SUNDAY` set the session starts and labels.
 - `RECORDINGS` maps a retreat date and session name to its YouTube URL. Add new links there as recordings become available.
-- For each live deployment, change `SITE_VERSION` and `version.json` to the same new value, and use that value in the `app.js` query string in `index.html`. Open pages check this marker every 60 seconds and reload when it changes.
+- Change `version.json` for each live deployment. Open pages check this marker every 60 seconds, then reload the versioned page and script only when it changes.
 
 ## GitHub Pages
 

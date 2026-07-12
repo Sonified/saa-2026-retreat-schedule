@@ -337,6 +337,13 @@
       </div>
     </dialog>
 
-    <script src="./app.js?v=20260712-2"></script>
+    <script>
+      (() => {
+        const version = new URL(window.location.href).searchParams.get("version") || "initial";
+        const script = document.createElement("script");
+        script.src = `./app.js?v=${encodeURIComponent(version)}`;
+        document.body.append(script);
+      })();
+    </script>
   </body>
 </html>

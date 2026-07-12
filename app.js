@@ -7,7 +7,6 @@ const RECORDINGS_CACHE_STORAGE_KEY = "retreat-recordings-cache-v1";
 const RECORDINGS_DOCUMENT_EXPORT_URL = "https://docs.google.com/document/d/1rkIvPc6x3rBdop8l-StP5VZ-79uowX2yZBSSRTDqC5E/export?format=txt";
 const RECORDINGS_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const RECORDINGS_REFRESH_WINDOW_MS = 60 * 1000;
-const SITE_VERSION = "20260712-2";
 const SITE_VERSION_CHECK_INTERVAL_MS = 60 * 1000;
 const RETREAT_DATES = [
   { date: "2026-07-08", template: "full" },
@@ -1858,8 +1857,9 @@ async function checkForSiteUpdate() {
     if (!response.ok) return;
 
     const manifest = await response.json();
+    const currentVersion = new URL(window.location.href).searchParams.get("version");
     if (!manifest?.version
-      || manifest.version === SITE_VERSION
+      || manifest.version === currentVersion
       || elements.recordingDialog.open
       || elements.mapFormDialog.open) return;
 
@@ -1872,6 +1872,7 @@ async function checkForSiteUpdate() {
 }
 
 function initializeSiteUpdateChecks() {
+  checkForSiteUpdate();
   setInterval(checkForSiteUpdate, SITE_VERSION_CHECK_INTERVAL_MS);
   elements.recordingDialog.addEventListener("close", checkForSiteUpdate);
   elements.mapFormDialog.addEventListener("close", checkForSiteUpdate);
