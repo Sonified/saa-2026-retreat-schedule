@@ -1876,7 +1876,7 @@ function prepareMeditationCompletionSound() {
   if (!elements.meditationCompletionSoundToggle.checked) return;
 
   const sound = elements.meditationCompletionSound;
-  sound.volume = 0.5;
+  sound.volume = 0.35;
   sound.muted = true;
   const unlock = sound.play();
 
@@ -1894,7 +1894,7 @@ function playMeditationCompletionSound() {
 
   const sound = elements.meditationCompletionSound;
   sound.muted = false;
-  sound.volume = 0.5;
+  sound.volume = 0.35;
   sound.currentTime = 0;
   sound.play().catch(() => {
     // The completed state still appears if a browser blocks delayed audio.
@@ -1974,7 +1974,7 @@ function initializeMeditationTimer() {
     button.blur();
   });
 
-  elements.meditationCompletionSound.volume = 0.5;
+  elements.meditationCompletionSound.volume = 0.35;
   elements.meditationPauseToggle.addEventListener("click", () => {
     const timer = getMeditationTimer();
     if (!timer) return;
