@@ -17,6 +17,7 @@ The schedule lives in `app.js`:
 - `SOURCE_TIME_ZONE` sets the original schedule time zone.
 - `RETREAT_DATES` sets the retreat dates.
 - `FULL_DAY` and `SUNDAY` set the session starts and labels.
+- `POST_RETREAT_HOME_ROUTE` selects the first-page experience after the final `Close`. Set it to `"retreat-live"` to retain the original retreat status view.
 - `RECORDINGS` maps a retreat date and session name to its YouTube URL. Add new links there as recordings become available.
 - Change `version.json` for each live deployment. Open pages check this marker every 60 seconds, then reload the versioned page and script only when it changes.
 

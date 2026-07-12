@@ -1883,7 +1883,7 @@ function renderMeditationTimer(now) {
       ? "Meditation complete"
       : "Start a meditation";
   elements.meditationCountdownWrap.hidden = !isActive && !meditationTimerCompleted;
-  renderDuration(elements.meditationCountdown, isActive ? remaining : 0, true);
+  renderDuration(elements.meditationCountdown, isActive ? remaining + 999 : 0, true);
 
   elements.meditationDurationOptions.querySelectorAll("button").forEach((button) => {
     const isSelected = isActive && Number(button.dataset.meditationMinutes) === timer.duration;
@@ -1935,7 +1935,8 @@ async function checkForSiteUpdate() {
     const manifest = await response.json();
     if (!manifest?.version
       || elements.recordingDialog.open
-      || elements.mapFormDialog.open) return;
+      || elements.mapFormDialog.open
+      || isMeditationTimerActive()) return;
 
     const currentUrl = new URL(window.location.href);
     const latestVersion = formatSiteVersionForUrl(manifest.version);
