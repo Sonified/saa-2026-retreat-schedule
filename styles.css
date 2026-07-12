@@ -284,7 +284,7 @@ body[data-display-tone="dim"] .countdown {
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
-  width: min(760px, 100%);
+  width: min(506px, 100%);
   margin: 34px auto 0;
 }
 
@@ -329,7 +329,7 @@ body[data-display-tone="dim"] .countdown {
   z-index: 0;
   top: 44%;
   left: 50%;
-  width: min(760px, 100%);
+  width: min(506px, 100%);
   height: clamp(32px, 5.5vw, 54px);
   overflow: hidden;
   border-radius: 999px;

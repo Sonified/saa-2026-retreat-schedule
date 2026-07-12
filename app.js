@@ -131,6 +131,7 @@ const elements = {
   meditationDurationOptions: document.querySelector(".meditation-duration-options"),
   meditationCountdownWrap: document.querySelector("#meditation-countdown-wrap"),
   meditationCountdown: document.querySelector("#meditation-countdown"),
+  meditationProgress: document.querySelector(".meditation-progress"),
   meditationProgressFill: document.querySelector("#meditation-progress-fill"),
   meditationTimerControls: document.querySelector("#meditation-timer-controls"),
   meditationPauseToggle: document.querySelector("#meditation-pause-toggle"),
@@ -1941,6 +1942,19 @@ function renderMeditationTimer(now) {
     const isSelected = isActive && Number(button.dataset.meditationMinutes) === timer.duration;
     button.setAttribute("aria-pressed", String(isSelected));
   });
+  syncMeditationProgressWidth();
+}
+
+function syncMeditationProgressWidth() {
+  const bounds = Array.from(
+    elements.meditationDurationOptions.querySelectorAll("button")
+  ).map((button) => button.getBoundingClientRect()).filter((buttonBounds) => buttonBounds.width > 0);
+
+  if (bounds.length === 0) return;
+
+  const left = Math.min(...bounds.map((buttonBounds) => buttonBounds.left));
+  const right = Math.max(...bounds.map((buttonBounds) => buttonBounds.right));
+  elements.meditationProgress.style.width = `${Math.ceil(right - left)}px`;
 }
 
 function renderPrimaryView() {
@@ -1959,6 +1973,9 @@ function renderPrimaryView() {
 }
 
 function initializeMeditationTimer() {
+  const progressWidthObserver = new ResizeObserver(syncMeditationProgressWidth);
+  progressWidthObserver.observe(elements.meditationDurationOptions);
+
   elements.meditationDurationOptions.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-meditation-minutes]");
     if (!button) return;
