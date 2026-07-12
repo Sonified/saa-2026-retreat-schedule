@@ -131,6 +131,8 @@ const elements = {
   meditationDurationOptions: document.querySelector(".meditation-duration-options"),
   meditationCountdownWrap: document.querySelector("#meditation-countdown-wrap"),
   meditationCountdown: document.querySelector("#meditation-countdown"),
+  meditationCompletionSoundToggle: document.querySelector("#meditation-completion-sound-toggle"),
+  meditationCompletionSound: document.querySelector("#meditation-completion-sound"),
 };
 
 const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -1863,17 +1865,47 @@ function shouldShowMeditationTimer(now) {
   return finalEvent?.name === "Close" && now >= finalEvent.start;
 }
 
+function prepareMeditationCompletionSound() {
+  if (!elements.meditationCompletionSoundToggle.checked) return;
+
+  const sound = elements.meditationCompletionSound;
+  sound.volume = 0.5;
+  sound.muted = true;
+  const unlock = sound.play();
+
+  unlock?.then(() => {
+    sound.pause();
+    sound.currentTime = 0;
+    sound.muted = false;
+  }).catch(() => {
+    sound.muted = false;
+  });
+}
+
+function playMeditationCompletionSound() {
+  if (!elements.meditationCompletionSoundToggle.checked) return;
+
+  const sound = elements.meditationCompletionSound;
+  sound.muted = false;
+  sound.volume = 0.5;
+  sound.currentTime = 0;
+  sound.play().catch(() => {
+    // The completed state still appears if a browser blocks delayed audio.
+  });
+}
+
 function renderMeditationTimer(now) {
   const timer = getMeditationTimer();
   const remaining = timer ? timer.end - now.getTime() : 0;
 
   if (timer && remaining <= 0) {
+    if (!meditationTimerCompleted) playMeditationCompletionSound();
+    meditationTimerCompleted = true;
     try {
       localStorage.removeItem(MEDITATION_TIMER_STORAGE_KEY);
     } catch (_) {
       // The completed state still renders when storage is unavailable.
     }
-    meditationTimerCompleted = true;
   }
 
   const isActive = remaining > 0;
@@ -1913,12 +1945,20 @@ function initializeMeditationTimer() {
 
     const duration = Number(button.dataset.meditationMinutes);
     meditationTimerCompleted = false;
+    prepareMeditationCompletionSound();
     storePreference(MEDITATION_TIMER_STORAGE_KEY, JSON.stringify({
       duration,
       end: Date.now() + duration * 60 * 1000,
     }));
     renderPrimaryView();
     button.blur();
+  });
+
+  elements.meditationCompletionSound.volume = 0.5;
+  elements.meditationCompletionSoundToggle.addEventListener("change", () => {
+    if (elements.meditationCompletionSoundToggle.checked) {
+      prepareMeditationCompletionSound();
+    }
   });
 }
 

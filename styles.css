@@ -311,6 +311,28 @@ body[data-display-tone="dim"] .countdown {
   margin-top: 44px;
 }
 
+.meditation-sound-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 28px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.meditation-sound-option input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.meditation-sound-option input:focus-visible {
+  outline: 2px solid var(--active);
+  outline-offset: 3px;
+}
+
 .meditation-timer-view .schedule-link {
   margin-top: 52px;
 }
