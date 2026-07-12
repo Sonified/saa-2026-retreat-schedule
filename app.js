@@ -1890,7 +1890,9 @@ function recordMeditationCompletion(duration, completedAt) {
 }
 
 function formatCompletedMeditationTime(totalMinutes) {
-  const minutes = Math.max(0, Math.round(totalMinutes));
+  if (totalMinutes > 0 && totalMinutes < 1) return "< 1 min";
+
+  const minutes = Math.max(0, Math.floor(totalMinutes));
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   const parts = [];
@@ -2111,6 +2113,17 @@ function initializeMeditationTimer() {
   });
 
   elements.meditationEnd.addEventListener("click", () => {
+    const timer = getMeditationTimer();
+    if (timer) {
+      const totalDuration = timer.duration * 60 * 1000;
+      const remaining = timer.paused === true
+        ? Math.max(0, Number(timer.remaining) || 0)
+        : Math.max(0, timer.end - Date.now());
+      const elapsedMinutes = Math.min(totalDuration, Math.max(0, totalDuration - remaining)) / 60000;
+
+      if (elapsedMinutes > 0) recordMeditationCompletion(elapsedMinutes, Date.now());
+    }
+
     meditationTimerCompleted = false;
     try {
       localStorage.removeItem(MEDITATION_TIMER_STORAGE_KEY);
