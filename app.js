@@ -42,7 +42,10 @@ const RECORDINGS = {
   },
   "2026-07-11": {
     "Guided Meditation": "https://youtu.be/S8vAKj24UKU",
-    Talk: "https://youtu.be/qe8RW5Zwge4",
+    Talk: "https://youtu.be/62SBh8RpTn8",
+  },
+  "2026-07-12": {
+    Talk: "https://youtu.be/3i1qTXtU1SY",
   },
 };
 const RECORDED_SESSION_NAMES = new Set([
