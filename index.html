@@ -8,6 +8,9 @@
     <script>
       (() => {
         const pageUrl = new URL(window.location.href);
+        const assetVersion = pageUrl.searchParams.get("v")
+          || pageUrl.searchParams.get("version")
+          || "initial";
         let displayTone = "bright";
         let secondsVisibility = "hide";
 
@@ -27,6 +30,16 @@
 
         document.documentElement.dataset.displayTone = displayTone;
         document.documentElement.dataset.secondsVisibility = secondsVisibility;
+
+        const revealPage = () => document.documentElement.style.removeProperty("visibility");
+        document.documentElement.style.visibility = "hidden";
+        const stylesheet = document.createElement("link");
+        stylesheet.rel = "stylesheet";
+        stylesheet.href = `./styles.css?v=${encodeURIComponent(assetVersion)}`;
+        stylesheet.addEventListener("load", revealPage, { once: true });
+        stylesheet.addEventListener("error", revealPage, { once: true });
+        document.head.append(stylesheet);
+        window.setTimeout(revealPage, 10000);
       })();
     </script>
     <title>SAA Retreat 2026</title>
@@ -34,7 +47,6 @@
       name="description"
       content="See what is happening now during the Simply Always Awake Online Retreat and view the full schedule in your local time zone."
     >
-    <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
     <header class="site-header">
