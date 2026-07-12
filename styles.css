@@ -279,6 +279,47 @@ body[data-display-tone="dim"] .countdown {
   transition: color 240ms ease;
 }
 
+.meditation-duration-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  width: min(760px, 100%);
+  margin: 34px auto 0;
+}
+
+.meditation-duration-options button {
+  min-width: 76px;
+  padding: 11px 16px;
+  border: 1px solid rgba(198, 154, 99, 0.38);
+  border-radius: 999px;
+  background: rgba(198, 154, 99, 0.06);
+  color: var(--live-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.meditation-duration-options button:hover,
+.meditation-duration-options button:focus-visible,
+.meditation-duration-options button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  outline: none;
+}
+
+.meditation-timer-view .countdown-wrap {
+  margin-top: 44px;
+}
+
+.meditation-timer-view .schedule-link {
+  margin-top: 52px;
+}
+
+body[data-display-tone="dim"] .meditation-duration-options button {
+  border-color: rgba(128, 99, 66, 0.4);
+  color: var(--dim-live-text);
+}
+
 #next-title.is-lunch-free-time {
   font-size: calc(1em + 1pt);
 }

@@ -115,6 +115,7 @@
     <main>
       <section id="timer" class="live-panel" aria-labelledby="current-title">
         <div class="live-content">
+          <div id="retreat-live-view">
           <div class="status-heading">
             <p id="status-label" class="section-label">Happening now</p>
             <button
@@ -148,6 +149,32 @@
             See the retreat schedule
             <span aria-hidden="true">↓</span>
           </a>
+          </div>
+
+          <div id="meditation-timer-view" class="meditation-timer-view" hidden>
+            <p class="section-label">Retreat complete</p>
+            <h1 id="meditation-title">Start a meditation</h1>
+
+            <div class="meditation-duration-options" role="group" aria-label="Meditation duration">
+              <button type="button" data-meditation-minutes="5">5 min</button>
+              <button type="button" data-meditation-minutes="10">10 min</button>
+              <button type="button" data-meditation-minutes="20">20 min</button>
+              <button type="button" data-meditation-minutes="30">30 min</button>
+              <button type="button" data-meditation-minutes="40">40 min</button>
+              <button type="button" data-meditation-minutes="50">50 min</button>
+              <button type="button" data-meditation-minutes="60">1 hr</button>
+            </div>
+
+            <div id="meditation-countdown-wrap" class="countdown-wrap" hidden>
+              <p id="meditation-countdown" class="countdown" role="timer" aria-atomic="true">0:00</p>
+              <p class="countdown-note">remaining</p>
+            </div>
+
+            <a class="schedule-link" href="#schedule">
+              See the retreat schedule
+              <span aria-hidden="true">↓</span>
+            </a>
+          </div>
         </div>
       </section>
 

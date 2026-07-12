@@ -4,11 +4,13 @@ const SECONDS_VISIBILITY_STORAGE_KEY = "retreat-seconds-visibility-v2";
 const SCHEDULE_SELECTION_STORAGE_KEY = "retreat-schedule-selection-v1";
 const RECORDING_PROGRESS_STORAGE_KEY = "retreat-recording-progress-v1";
 const RECORDINGS_CACHE_STORAGE_KEY = "retreat-recordings-cache-v1";
+const MEDITATION_TIMER_STORAGE_KEY = "retreat-meditation-timer-v1";
 const RECORDINGS_DOCUMENT_EXPORT_URL = "https://docs.google.com/document/d/1rkIvPc6x3rBdop8l-StP5VZ-79uowX2yZBSSRTDqC5E/export?format=txt";
 const RECORDINGS_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const RECORDINGS_REFRESH_WINDOW_MS = 60 * 1000;
 const SITE_VERSION_CHECK_INTERVAL_MS = 60 * 1000;
 const PAGE_IDS = ["timer", "schedule", "community-map"];
+const POST_RETREAT_HOME_ROUTE = "meditation-timer"; // Change to "retreat-live" to keep the original view.
 const RETREAT_DATES = [
   { date: "2026-07-08", template: "full" },
   { date: "2026-07-09", template: "full" },
@@ -122,6 +124,13 @@ const elements = {
   displayToneControl: document.querySelector(".display-tone-control"),
   displayToneIconToggle: document.querySelector("#display-tone-icon-toggle"),
   floatLiveButton: document.querySelector("#float-live-button"),
+  timerPanel: document.querySelector("#timer"),
+  retreatLiveView: document.querySelector("#retreat-live-view"),
+  meditationTimerView: document.querySelector("#meditation-timer-view"),
+  meditationTitle: document.querySelector("#meditation-title"),
+  meditationDurationOptions: document.querySelector(".meditation-duration-options"),
+  meditationCountdownWrap: document.querySelector("#meditation-countdown-wrap"),
+  meditationCountdown: document.querySelector("#meditation-countdown"),
 };
 
 const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -133,6 +142,7 @@ let showCountdownSeconds = false;
 let recordingsRefreshTimer = null;
 let recordingsRefreshPromise = null;
 let floatingLiveWindow = null;
+let meditationTimerCompleted = false;
 
 const FLOATING_LIVE_STYLES = `
   :root {
@@ -1834,10 +1844,89 @@ function renderStatus() {
   syncFloatingLiveView();
 }
 
+function getMeditationTimer() {
+  try {
+    const timer = JSON.parse(localStorage.getItem(MEDITATION_TIMER_STORAGE_KEY));
+    return Number.isFinite(timer?.end) && Number.isFinite(timer?.duration) ? timer : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function isMeditationTimerActive(now = Date.now()) {
+  return (getMeditationTimer()?.end || 0) > now;
+}
+
+function shouldShowMeditationTimer(now) {
+  if (POST_RETREAT_HOME_ROUTE !== "meditation-timer") return false;
+  const finalEvent = events[events.length - 1];
+  return finalEvent?.name === "Close" && now >= finalEvent.start;
+}
+
+function renderMeditationTimer(now) {
+  const timer = getMeditationTimer();
+  const remaining = timer ? timer.end - now.getTime() : 0;
+
+  if (timer && remaining <= 0) {
+    try {
+      localStorage.removeItem(MEDITATION_TIMER_STORAGE_KEY);
+    } catch (_) {
+      // The completed state still renders when storage is unavailable.
+    }
+    meditationTimerCompleted = true;
+  }
+
+  const isActive = remaining > 0;
+  elements.meditationTitle.textContent = isActive
+    ? "Meditating"
+    : meditationTimerCompleted
+      ? "Meditation complete"
+      : "Start a meditation";
+  elements.meditationCountdownWrap.hidden = !isActive && !meditationTimerCompleted;
+  renderDuration(elements.meditationCountdown, isActive ? remaining : 0, true);
+
+  elements.meditationDurationOptions.querySelectorAll("button").forEach((button) => {
+    const isSelected = isActive && Number(button.dataset.meditationMinutes) === timer.duration;
+    button.setAttribute("aria-pressed", String(isSelected));
+  });
+}
+
+function renderPrimaryView() {
+  renderStatus();
+  const now = new Date();
+  const showMeditationTimer = shouldShowMeditationTimer(now);
+
+  elements.retreatLiveView.hidden = showMeditationTimer;
+  elements.meditationTimerView.hidden = !showMeditationTimer;
+  elements.timerPanel.setAttribute(
+    "aria-labelledby",
+    showMeditationTimer ? "meditation-title" : "current-title"
+  );
+
+  if (showMeditationTimer) renderMeditationTimer(now);
+}
+
+function initializeMeditationTimer() {
+  elements.meditationDurationOptions.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-meditation-minutes]");
+    if (!button) return;
+
+    const duration = Number(button.dataset.meditationMinutes);
+    meditationTimerCompleted = false;
+    storePreference(MEDITATION_TIMER_STORAGE_KEY, JSON.stringify({
+      duration,
+      end: Date.now() + duration * 60 * 1000,
+    }));
+    renderPrimaryView();
+    button.blur();
+  });
+}
+
 async function checkForSiteUpdate() {
   if (document.visibilityState === "hidden"
     || elements.recordingDialog.open
-    || elements.mapFormDialog.open) return;
+    || elements.mapFormDialog.open
+    || isMeditationTimerActive()) return;
 
   try {
     const response = await fetch(`./version.json?check=${Date.now()}`, { cache: "no-store" });
@@ -2098,15 +2187,16 @@ initializeMapFormDialog();
 initializeFullscreenToggle();
 initializeToneIconControl();
 initializeFloatingLiveView();
-renderStatus();
+initializeMeditationTimer();
+renderPrimaryView();
 finishSiteUpdateRestore();
 initializeRecordingsRefresh();
 initializeSiteUpdateChecks();
-window.addEventListener("pageshow", renderStatus);
+window.addEventListener("pageshow", renderPrimaryView);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
-    renderStatus();
+    renderPrimaryView();
     checkForSiteUpdate();
   }
 });
-setInterval(renderStatus, 1000);
+setInterval(renderPrimaryView, 1000);
