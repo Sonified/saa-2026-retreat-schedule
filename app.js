@@ -5,6 +5,7 @@ const SCHEDULE_SELECTION_STORAGE_KEY = "retreat-schedule-selection-v1";
 const RECORDING_PROGRESS_STORAGE_KEY = "retreat-recording-progress-v1";
 const RECORDINGS_CACHE_STORAGE_KEY = "retreat-recordings-cache-v1";
 const MEDITATION_TIMER_STORAGE_KEY = "retreat-meditation-timer-v1";
+const MEDITATION_COMPLETION_HISTORY_STORAGE_KEY = "retreat-meditation-completion-history-v1";
 const RECORDINGS_DOCUMENT_EXPORT_URL = "https://docs.google.com/document/d/1rkIvPc6x3rBdop8l-StP5VZ-79uowX2yZBSSRTDqC5E/export?format=txt";
 const RECORDINGS_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const RECORDINGS_REFRESH_WINDOW_MS = 60 * 1000;
@@ -129,6 +130,9 @@ const elements = {
   meditationTimerView: document.querySelector("#meditation-timer-view"),
   meditationTitle: document.querySelector("#meditation-title"),
   meditationDurationOptions: document.querySelector(".meditation-duration-options"),
+  meditationCompletedToday: document.querySelector("#meditation-completed-today"),
+  meditationCompletedWeek: document.querySelector("#meditation-completed-week"),
+  meditationCompletedAllTime: document.querySelector("#meditation-completed-all-time"),
   meditationSessionDrawer: document.querySelector("#meditation-session-drawer"),
   meditationCountdownWrap: document.querySelector("#meditation-countdown-wrap"),
   meditationCountdown: document.querySelector("#meditation-countdown"),
@@ -1863,6 +1867,54 @@ function getMeditationTimer() {
   }
 }
 
+function getMeditationCompletionHistory() {
+  try {
+    const history = JSON.parse(localStorage.getItem(MEDITATION_COMPLETION_HISTORY_STORAGE_KEY));
+    return Array.isArray(history)
+      ? history.filter((entry) => Number.isFinite(entry?.completedAt)
+        && Number.isFinite(entry?.duration)
+        && entry.duration > 0)
+      : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function recordMeditationCompletion(duration, completedAt) {
+  const history = getMeditationCompletionHistory();
+  history.push({ duration, completedAt });
+  storePreference(MEDITATION_COMPLETION_HISTORY_STORAGE_KEY, JSON.stringify(history));
+}
+
+function formatCompletedMeditationTime(totalMinutes) {
+  const minutes = Math.max(0, Math.round(totalMinutes));
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  const parts = [];
+
+  if (hours > 0) parts.push(`${hours} hr`);
+  if (remainingMinutes > 0 || hours === 0) parts.push(`${remainingMinutes} min`);
+  return parts.join(" ");
+}
+
+function renderMeditationCompletionStats(now) {
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+
+  const totals = getMeditationCompletionHistory().reduce((result, entry) => {
+    result.allTime += entry.duration;
+    if (entry.completedAt >= weekStart.getTime()) result.week += entry.duration;
+    if (entry.completedAt >= todayStart.getTime()) result.today += entry.duration;
+    return result;
+  }, { today: 0, week: 0, allTime: 0 });
+
+  elements.meditationCompletedToday.textContent = formatCompletedMeditationTime(totals.today);
+  elements.meditationCompletedWeek.textContent = formatCompletedMeditationTime(totals.week);
+  elements.meditationCompletedAllTime.textContent = formatCompletedMeditationTime(totals.allTime);
+}
+
 function isMeditationTimerActive(now = Date.now()) {
   const timer = getMeditationTimer();
   return timer?.paused === true
@@ -1915,7 +1967,10 @@ function renderMeditationTimer(now) {
     : 0;
 
   if (timer && !isPaused && remaining <= 0) {
-    if (!meditationTimerCompleted) playMeditationCompletionSound();
+    if (!meditationTimerCompleted) {
+      recordMeditationCompletion(timer.duration, now.getTime());
+      playMeditationCompletionSound();
+    }
     meditationTimerCompleted = true;
     try {
       localStorage.removeItem(MEDITATION_TIMER_STORAGE_KEY);
@@ -1925,6 +1980,7 @@ function renderMeditationTimer(now) {
   }
 
   const isActive = remaining > 0;
+  renderMeditationCompletionStats(now);
   elements.meditationTitle.textContent = isActive
     ? isPaused ? "Meditation paused" : "Meditating"
     : meditationTimerCompleted

@@ -342,6 +342,35 @@ body[data-display-tone="dim"] .countdown {
   background: rgba(198, 154, 99, 0.18);
 }
 
+.meditation-completion-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 26px;
+  margin: 18px auto 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.meditation-completion-stats div {
+  display: flex;
+  gap: 6px;
+}
+
+.meditation-completion-stats dt,
+.meditation-completion-stats dd {
+  margin: 0;
+}
+
+.meditation-completion-stats dt {
+  color: var(--faint);
+}
+
+.meditation-completion-stats dd {
+  color: var(--countdown-text);
+}
+
 .meditation-session-drawer {
   display: grid;
   grid-template-rows: 0fr;
