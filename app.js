@@ -1852,6 +1852,7 @@ async function checkForSiteUpdate() {
 
     const updateUrl = new URL(window.location.href);
     updateUrl.searchParams.set("version", manifest.version);
+    updateUrl.searchParams.set("refresh", "auto");
     updateUrl.hash = getVisiblePageId();
     window.location.replace(updateUrl.href);
   } catch (_) {
@@ -1882,6 +1883,28 @@ function getVisiblePageId() {
 
     return pageDistance < closestDistance ? pageId : closestId;
   }, PAGE_IDS[0]);
+}
+
+function finishSiteUpdateRestore() {
+  if (document.documentElement.dataset.restoringPosition !== "true") return;
+
+  const pageId = window.location.hash.slice(1);
+  if (PAGE_IDS.includes(pageId)) {
+    document.querySelector(`#${pageId}`)?.scrollIntoView({
+      behavior: "auto",
+      block: "start",
+    });
+  }
+
+  const cleanUrl = new URL(window.location.href);
+  cleanUrl.searchParams.delete("refresh");
+  window.history.replaceState(null, "", cleanUrl.href);
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      delete document.documentElement.dataset.restoringPosition;
+    });
+  });
 }
 
 function renderRetreatDayPanel(retreatDay, dayIndex) {
@@ -2050,6 +2073,7 @@ initializeFullscreenToggle();
 initializeToneIconControl();
 initializeFloatingLiveView();
 renderStatus();
+finishSiteUpdateRestore();
 initializeRecordingsRefresh();
 initializeSiteUpdateChecks();
 window.addEventListener("pageshow", renderStatus);

@@ -35,6 +35,14 @@ html {
   overscroll-behavior-y: none;
 }
 
+html[data-restoring-position="true"] {
+  scroll-behavior: auto;
+}
+
+html[data-restoring-position="true"] body {
+  visibility: hidden;
+}
+
 body {
   min-width: 320px;
   min-height: 100svh;

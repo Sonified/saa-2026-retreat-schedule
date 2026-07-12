@@ -7,8 +7,16 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
     <script>
       (() => {
+        const pageUrl = new URL(window.location.href);
         let displayTone = "bright";
         let secondsVisibility = "hide";
+
+        if (pageUrl.searchParams.get("refresh") === "auto") {
+          document.documentElement.dataset.restoringPosition = "true";
+          window.setTimeout(() => {
+            delete document.documentElement.dataset.restoringPosition;
+          }, 10000);
+        }
 
         try {
           displayTone = localStorage.getItem("retreat-display-tone-v2") === "dim" ? "dim" : "bright";
