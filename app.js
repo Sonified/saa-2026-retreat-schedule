@@ -130,6 +130,7 @@ const elements = {
   meditationTimerView: document.querySelector("#meditation-timer-view"),
   meditationTitle: document.querySelector("#meditation-title"),
   meditationDurationOptions: document.querySelector(".meditation-duration-options"),
+  meditationCompletionStats: document.querySelector(".meditation-completion-stats"),
   meditationCompletedToday: document.querySelector("#meditation-completed-today"),
   meditationCompletedWeek: document.querySelector("#meditation-completed-week"),
   meditationCompletedAllTime: document.querySelector("#meditation-completed-all-time"),
@@ -2002,6 +2003,8 @@ function renderMeditationTimer(now) {
   elements.meditationDurationOptions.classList.toggle("is-session-active", isActive);
   elements.meditationDurationOptions.setAttribute("aria-hidden", String(isActive));
   elements.meditationDurationOptions.toggleAttribute("inert", isActive);
+  elements.meditationCompletionStats.classList.toggle("is-session-active", isActive);
+  elements.meditationCompletionStats.setAttribute("aria-hidden", String(isActive));
   elements.meditationPauseToggle.disabled = !isActive;
   elements.meditationEnd.disabled = !isActive;
   elements.meditationPauseToggle.textContent = isPaused ? "Play" : "Pause";

@@ -347,10 +347,32 @@ body[data-display-tone="dim"] .countdown {
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px 26px;
+  max-height: 42px;
   margin: 18px auto 0;
+  overflow: hidden;
   color: var(--muted);
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
+  transition:
+    opacity 360ms ease,
+    transform 360ms ease,
+    max-height 540ms ease,
+    margin-top 540ms ease,
+    visibility 0s linear 0s;
+}
+
+.meditation-completion-stats.is-session-active {
+  max-height: 0;
+  margin-top: 0;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity 360ms ease,
+    transform 360ms ease,
+    max-height 540ms ease,
+    margin-top 540ms ease,
+    visibility 0s linear 540ms;
 }
 
 .meditation-completion-stats div {
@@ -2272,6 +2294,8 @@ body[data-display-tone="dim"] .session-row.is-next::before {
   .meditation-session-drawer.is-open,
   .meditation-duration-options,
   .meditation-duration-options.is-session-active,
+  .meditation-completion-stats,
+  .meditation-completion-stats.is-session-active,
   .meditation-timer-view h1 {
     transition: none;
   }
