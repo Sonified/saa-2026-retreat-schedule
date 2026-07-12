@@ -347,7 +347,10 @@
 
     <script>
       (() => {
-        const version = new URL(window.location.href).searchParams.get("version") || "initial";
+        const pageUrl = new URL(window.location.href);
+        const version = pageUrl.searchParams.get("v")
+          || pageUrl.searchParams.get("version")
+          || "initial";
         const script = document.createElement("script");
         script.src = `./app.js?v=${encodeURIComponent(version)}`;
         document.body.append(script);

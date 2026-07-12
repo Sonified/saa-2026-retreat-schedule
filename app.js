@@ -1844,14 +1844,28 @@ async function checkForSiteUpdate() {
     if (!response.ok) return;
 
     const manifest = await response.json();
-    const currentVersion = new URL(window.location.href).searchParams.get("version");
     if (!manifest?.version
-      || manifest.version === currentVersion
       || elements.recordingDialog.open
       || elements.mapFormDialog.open) return;
 
-    const updateUrl = new URL(window.location.href);
-    updateUrl.searchParams.set("version", manifest.version);
+    const currentUrl = new URL(window.location.href);
+    const latestVersion = formatSiteVersionForUrl(manifest.version);
+    const currentVersion = formatSiteVersionForUrl(
+      currentUrl.searchParams.get("v") || currentUrl.searchParams.get("version")
+    );
+
+    if (latestVersion === currentVersion) {
+      if (currentUrl.searchParams.has("version")) {
+        currentUrl.searchParams.set("v", latestVersion);
+        currentUrl.searchParams.delete("version");
+        window.history.replaceState(null, "", currentUrl.href);
+      }
+      return;
+    }
+
+    const updateUrl = currentUrl;
+    updateUrl.searchParams.set("v", latestVersion);
+    updateUrl.searchParams.delete("version");
     updateUrl.searchParams.set("refresh", "auto");
     updateUrl.hash = getVisiblePageId();
     window.location.replace(updateUrl.href);
@@ -1865,6 +1879,12 @@ function initializeSiteUpdateChecks() {
   setInterval(checkForSiteUpdate, SITE_VERSION_CHECK_INTERVAL_MS);
   elements.recordingDialog.addEventListener("close", checkForSiteUpdate);
   elements.mapFormDialog.addEventListener("close", checkForSiteUpdate);
+}
+
+function formatSiteVersionForUrl(version) {
+  const value = typeof version === "string" ? version : "";
+  const timestamp = value.match(/^\d{2}(\d{6})\.(\d{4})\d{2}$/);
+  return timestamp ? `${timestamp[1]}.${timestamp[2]}` : value;
 }
 
 function getVisiblePageId() {
@@ -1897,6 +1917,11 @@ function finishSiteUpdateRestore() {
   }
 
   const cleanUrl = new URL(window.location.href);
+  const legacyVersion = cleanUrl.searchParams.get("version");
+  if (legacyVersion && !cleanUrl.searchParams.has("v")) {
+    cleanUrl.searchParams.set("v", formatSiteVersionForUrl(legacyVersion));
+  }
+  cleanUrl.searchParams.delete("version");
   cleanUrl.searchParams.delete("refresh");
   window.history.replaceState(null, "", cleanUrl.href);
 
