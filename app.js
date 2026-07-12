@@ -1923,6 +1923,7 @@ function finishSiteUpdateRestore() {
   }
   cleanUrl.searchParams.delete("version");
   cleanUrl.searchParams.delete("refresh");
+  cleanUrl.hash = "";
   window.history.replaceState(null, "", cleanUrl.href);
 
   requestAnimationFrame(() => {
