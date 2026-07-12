@@ -289,10 +289,10 @@ body[data-display-tone="dim"] .countdown {
   margin: 34px auto 0;
   overflow: hidden;
   transition:
-    opacity 240ms ease,
-    transform 240ms ease,
-    max-height 360ms ease,
-    margin-top 360ms ease,
+    opacity 360ms ease,
+    transform 360ms ease,
+    max-height 540ms ease,
+    margin-top 540ms ease,
     visibility 0s linear 0s;
 }
 
@@ -304,15 +304,15 @@ body[data-display-tone="dim"] .countdown {
   transform: translateY(-4px);
   pointer-events: none;
   transition:
-    opacity 240ms ease,
-    transform 240ms ease,
-    max-height 360ms ease,
-    margin-top 360ms ease,
-    visibility 0s linear 360ms;
+    opacity 360ms ease,
+    transform 360ms ease,
+    max-height 540ms ease,
+    margin-top 540ms ease,
+    visibility 0s linear 540ms;
 }
 
 .meditation-timer-view h1 {
-  transition: color 240ms ease, transform 360ms ease;
+  transition: color 240ms ease, transform 540ms ease;
 }
 
 .meditation-timer-view.has-active-session h1 {
@@ -348,9 +348,9 @@ body[data-display-tone="dim"] .countdown {
   visibility: hidden;
   opacity: 0;
   transition:
-    grid-template-rows 360ms ease,
-    opacity 240ms ease,
-    visibility 0s linear 360ms;
+    grid-template-rows 540ms ease,
+    opacity 360ms ease,
+    visibility 0s linear 540ms;
 }
 
 .meditation-session-drawer.is-open {
@@ -358,8 +358,8 @@ body[data-display-tone="dim"] .countdown {
   visibility: visible;
   opacity: 1;
   transition:
-    grid-template-rows 360ms ease,
-    opacity 240ms ease,
+    grid-template-rows 540ms ease,
+    opacity 360ms ease,
     visibility 0s linear 0s;
 }
 
@@ -444,14 +444,39 @@ body[data-display-tone="dim"] .meditation-progress span {
   outline: none;
 }
 
+.meditation-sound-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
 .meditation-sound-option {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  margin-top: 20px;
   color: var(--muted);
   font-size: 0.95rem;
   cursor: pointer;
+}
+
+.meditation-sound-controls button {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.meditation-sound-controls button:hover,
+.meditation-sound-controls button:focus-visible {
+  border-color: var(--accent);
+  color: var(--live-text);
+  outline: none;
 }
 
 .meditation-sound-option input {

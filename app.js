@@ -138,6 +138,7 @@ const elements = {
   meditationPauseToggle: document.querySelector("#meditation-pause-toggle"),
   meditationEnd: document.querySelector("#meditation-end"),
   meditationSoundOption: document.querySelector("#meditation-sound-option"),
+  meditationSoundTest: document.querySelector("#meditation-sound-test"),
   meditationCompletionSoundToggle: document.querySelector("#meditation-completion-sound-toggle"),
   meditationCompletionSound: document.querySelector("#meditation-completion-sound"),
 };
@@ -1892,8 +1893,8 @@ function prepareMeditationCompletionSound() {
   });
 }
 
-function playMeditationCompletionSound() {
-  if (!elements.meditationCompletionSoundToggle.checked) return;
+function playMeditationCompletionSound(force = false) {
+  if (!force && !elements.meditationCompletionSoundToggle.checked) return;
 
   const sound = elements.meditationCompletionSound;
   sound.muted = false;
@@ -2036,6 +2037,9 @@ function initializeMeditationTimer() {
     if (elements.meditationCompletionSoundToggle.checked) {
       prepareMeditationCompletionSound();
     }
+  });
+  elements.meditationSoundTest.addEventListener("click", () => {
+    playMeditationCompletionSound(true);
   });
 }
 
