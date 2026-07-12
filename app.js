@@ -1874,25 +1874,32 @@ function getMeditationCompletionHistory() {
   try {
     const history = JSON.parse(localStorage.getItem(MEDITATION_COMPLETION_HISTORY_STORAGE_KEY));
     return Array.isArray(history)
-      ? history.filter((entry) => Number.isFinite(entry?.completedAt)
-        && Number.isFinite(entry?.duration)
-        && entry.duration > 0)
+      ? history.map((entry) => ({
+        completedAt: entry?.completedAt,
+        seconds: Number.isFinite(entry?.seconds)
+          ? entry.seconds
+          : Number.isFinite(entry?.duration)
+            ? entry.duration * 60
+            : 0,
+      })).filter((entry) => Number.isFinite(entry.completedAt)
+        && Number.isFinite(entry.seconds)
+        && entry.seconds > 0)
       : [];
   } catch (_) {
     return [];
   }
 }
 
-function recordMeditationCompletion(duration, completedAt) {
+function recordMeditationTime(seconds, completedAt) {
   const history = getMeditationCompletionHistory();
-  history.push({ duration, completedAt });
+  history.push({ seconds, completedAt });
   storePreference(MEDITATION_COMPLETION_HISTORY_STORAGE_KEY, JSON.stringify(history));
 }
 
-function formatCompletedMeditationTime(totalMinutes) {
-  if (totalMinutes > 0 && totalMinutes < 1) return "< 1 min";
+function formatMeditationTime(totalSeconds) {
+  if (totalSeconds > 0 && totalSeconds < 60) return "< 1 min";
 
-  const minutes = Math.max(0, Math.floor(totalMinutes));
+  const minutes = Math.max(0, Math.floor(totalSeconds / 60));
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   const parts = [];
@@ -1909,15 +1916,15 @@ function renderMeditationCompletionStats(now) {
   weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
 
   const totals = getMeditationCompletionHistory().reduce((result, entry) => {
-    result.allTime += entry.duration;
-    if (entry.completedAt >= weekStart.getTime()) result.week += entry.duration;
-    if (entry.completedAt >= todayStart.getTime()) result.today += entry.duration;
+    result.allTime += entry.seconds;
+    if (entry.completedAt >= weekStart.getTime()) result.week += entry.seconds;
+    if (entry.completedAt >= todayStart.getTime()) result.today += entry.seconds;
     return result;
   }, { today: 0, week: 0, allTime: 0 });
 
-  elements.meditationCompletedToday.textContent = formatCompletedMeditationTime(totals.today);
-  elements.meditationCompletedWeek.textContent = formatCompletedMeditationTime(totals.week);
-  elements.meditationCompletedAllTime.textContent = formatCompletedMeditationTime(totals.allTime);
+  elements.meditationCompletedToday.textContent = formatMeditationTime(totals.today);
+  elements.meditationCompletedWeek.textContent = formatMeditationTime(totals.week);
+  elements.meditationCompletedAllTime.textContent = formatMeditationTime(totals.allTime);
 }
 
 function isMeditationTimerActive(now = Date.now()) {
@@ -2006,7 +2013,7 @@ function renderMeditationTimer(now) {
 
   if (timer && !isPaused && remaining <= 0) {
     if (!meditationTimerCompleted) {
-      recordMeditationCompletion(timer.duration, now.getTime());
+      recordMeditationTime(timer.duration * 60, now.getTime());
       playMeditationCompletionSound();
     }
     meditationTimerCompleted = true;
@@ -2119,9 +2126,9 @@ function initializeMeditationTimer() {
       const remaining = timer.paused === true
         ? Math.max(0, Number(timer.remaining) || 0)
         : Math.max(0, timer.end - Date.now());
-      const elapsedMinutes = Math.min(totalDuration, Math.max(0, totalDuration - remaining)) / 60000;
+      const elapsedSeconds = Math.min(totalDuration, Math.max(0, totalDuration - remaining)) / 1000;
 
-      if (elapsedMinutes > 0) recordMeditationCompletion(elapsedMinutes, Date.now());
+      if (elapsedSeconds > 0) recordMeditationTime(elapsedSeconds, Date.now());
     }
 
     meditationTimerCompleted = false;
