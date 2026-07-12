@@ -131,6 +131,7 @@ const elements = {
   meditationDurationOptions: document.querySelector(".meditation-duration-options"),
   meditationCountdownWrap: document.querySelector("#meditation-countdown-wrap"),
   meditationCountdown: document.querySelector("#meditation-countdown"),
+  meditationProgressFill: document.querySelector("#meditation-progress-fill"),
   meditationCompletionSoundToggle: document.querySelector("#meditation-completion-sound-toggle"),
   meditationCompletionSound: document.querySelector("#meditation-completion-sound"),
 };
@@ -1915,7 +1916,13 @@ function renderMeditationTimer(now) {
       ? "Meditation complete"
       : "Start a meditation";
   elements.meditationCountdownWrap.hidden = !isActive && !meditationTimerCompleted;
-  renderDuration(elements.meditationCountdown, isActive ? remaining + 999 : 0, true);
+  renderDuration(elements.meditationCountdown, isActive ? remaining : 0, false);
+
+  const totalDuration = timer ? timer.duration * 60 * 1000 : 0;
+  const remainingProgress = isActive && totalDuration > 0
+    ? Math.min(1, Math.max(0, remaining / totalDuration))
+    : 0;
+  elements.meditationProgressFill.style.transform = `scaleX(${remainingProgress})`;
 
   elements.meditationDurationOptions.querySelectorAll("button").forEach((button) => {
     const isSelected = isActive && Number(button.dataset.meditationMinutes) === timer.duration;

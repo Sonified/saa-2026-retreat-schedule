@@ -311,6 +311,28 @@ body[data-display-tone="dim"] .countdown {
   margin-top: 44px;
 }
 
+.meditation-progress {
+  width: min(620px, 82vw);
+  height: 2px;
+  margin: 25px auto 18px;
+  overflow: hidden;
+  background: var(--line);
+}
+
+.meditation-progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 1s linear;
+}
+
+body[data-display-tone="dim"] .meditation-progress span {
+  background: var(--dim-accent);
+}
+
 .meditation-sound-option {
   display: inline-flex;
   align-items: center;
