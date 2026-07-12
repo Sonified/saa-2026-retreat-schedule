@@ -1941,6 +1941,9 @@ function renderMeditationTimer(now) {
   elements.meditationSessionDrawer.setAttribute("aria-hidden", String(!drawerOpen));
   elements.meditationSessionDrawer.toggleAttribute("inert", !drawerOpen);
   elements.meditationTimerControls.classList.toggle("is-inactive", !isActive);
+  elements.meditationDurationOptions.classList.toggle("is-session-active", isActive);
+  elements.meditationDurationOptions.setAttribute("aria-hidden", String(isActive));
+  elements.meditationDurationOptions.toggleAttribute("inert", isActive);
   elements.meditationPauseToggle.disabled = !isActive;
   elements.meditationEnd.disabled = !isActive;
   elements.meditationPauseToggle.textContent = isPaused ? "Play" : "Pause";

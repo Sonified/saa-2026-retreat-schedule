@@ -286,6 +286,21 @@ body[data-display-tone="dim"] .countdown {
   gap: 10px;
   width: min(760px, 100%);
   margin: 34px auto 0;
+  transition:
+    opacity 240ms ease,
+    transform 240ms ease,
+    visibility 0s linear 0s;
+}
+
+.meditation-duration-options.is-session-active {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition:
+    opacity 240ms ease,
+    transform 240ms ease,
+    visibility 0s linear 240ms;
 }
 
 .meditation-duration-options button {
@@ -2184,7 +2199,9 @@ body[data-display-tone="dim"] .session-row.is-next::before {
   }
 
   .meditation-session-drawer,
-  .meditation-session-drawer.is-open {
+  .meditation-session-drawer.is-open,
+  .meditation-duration-options,
+  .meditation-duration-options.is-session-active {
     transition: none;
   }
 
