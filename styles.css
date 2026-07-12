@@ -351,11 +351,40 @@ body[data-display-tone="dim"] .meditation-progress span {
   background: rgba(128, 99, 66, 0.18);
 }
 
+.meditation-timer-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 42px;
+}
+
+.meditation-timer-controls[hidden] {
+  display: none;
+}
+
+.meditation-timer-controls button {
+  min-width: 92px;
+  padding: 10px 20px;
+  border: 1px solid rgba(198, 154, 99, 0.38);
+  border-radius: 999px;
+  background: rgba(198, 154, 99, 0.06);
+  color: var(--live-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.meditation-timer-controls button:hover,
+.meditation-timer-controls button:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  outline: none;
+}
+
 .meditation-sound-option {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  margin-top: 28px;
+  margin-top: 20px;
   color: var(--muted);
   font-size: 0.95rem;
   cursor: pointer;
@@ -377,7 +406,8 @@ body[data-display-tone="dim"] .meditation-progress span {
   margin-top: 52px;
 }
 
-body[data-display-tone="dim"] .meditation-duration-options button {
+body[data-display-tone="dim"] .meditation-duration-options button,
+body[data-display-tone="dim"] .meditation-timer-controls button {
   border-color: rgba(128, 99, 66, 0.4);
   color: var(--dim-live-text);
 }

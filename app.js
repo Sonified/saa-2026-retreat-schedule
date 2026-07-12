@@ -132,6 +132,9 @@ const elements = {
   meditationCountdownWrap: document.querySelector("#meditation-countdown-wrap"),
   meditationCountdown: document.querySelector("#meditation-countdown"),
   meditationProgressFill: document.querySelector("#meditation-progress-fill"),
+  meditationTimerControls: document.querySelector("#meditation-timer-controls"),
+  meditationPauseToggle: document.querySelector("#meditation-pause-toggle"),
+  meditationEnd: document.querySelector("#meditation-end"),
   meditationCompletionSoundToggle: document.querySelector("#meditation-completion-sound-toggle"),
   meditationCompletionSound: document.querySelector("#meditation-completion-sound"),
 };
@@ -1857,7 +1860,10 @@ function getMeditationTimer() {
 }
 
 function isMeditationTimerActive(now = Date.now()) {
-  return (getMeditationTimer()?.end || 0) > now;
+  const timer = getMeditationTimer();
+  return timer?.paused === true
+    ? Number(timer.remaining) > 0
+    : (timer?.end || 0) > now;
 }
 
 function shouldShowMeditationTimer(now) {
@@ -1897,9 +1903,14 @@ function playMeditationCompletionSound() {
 
 function renderMeditationTimer(now) {
   const timer = getMeditationTimer();
-  const remaining = timer ? timer.end - now.getTime() : 0;
+  const isPaused = timer?.paused === true;
+  const remaining = timer
+    ? isPaused
+      ? Number(timer.remaining) || 0
+      : timer.end - now.getTime()
+    : 0;
 
-  if (timer && remaining <= 0) {
+  if (timer && !isPaused && remaining <= 0) {
     if (!meditationTimerCompleted) playMeditationCompletionSound();
     meditationTimerCompleted = true;
     try {
@@ -1911,7 +1922,7 @@ function renderMeditationTimer(now) {
 
   const isActive = remaining > 0;
   elements.meditationTitle.textContent = isActive
-    ? "Meditating"
+    ? isPaused ? "Meditation paused" : "Meditating"
     : meditationTimerCompleted
       ? "Meditation complete"
       : "Start a meditation";
@@ -1923,6 +1934,8 @@ function renderMeditationTimer(now) {
     ? Math.min(1, Math.max(0, remaining / totalDuration))
     : 0;
   elements.meditationProgressFill.style.transform = `scaleX(${remainingProgress})`;
+  elements.meditationTimerControls.hidden = !isActive;
+  elements.meditationPauseToggle.textContent = isPaused ? "Play" : "Pause";
 
   elements.meditationDurationOptions.querySelectorAll("button").forEach((button) => {
     const isSelected = isActive && Number(button.dataset.meditationMinutes) === timer.duration;
@@ -1962,6 +1975,35 @@ function initializeMeditationTimer() {
   });
 
   elements.meditationCompletionSound.volume = 0.5;
+  elements.meditationPauseToggle.addEventListener("click", () => {
+    const timer = getMeditationTimer();
+    if (!timer) return;
+
+    if (timer.paused === true) {
+      timer.end = Date.now() + Math.max(0, Number(timer.remaining) || 0);
+      timer.paused = false;
+      delete timer.remaining;
+    } else {
+      timer.remaining = Math.max(0, timer.end - Date.now());
+      timer.paused = true;
+    }
+
+    storePreference(MEDITATION_TIMER_STORAGE_KEY, JSON.stringify(timer));
+    renderPrimaryView();
+  });
+
+  elements.meditationEnd.addEventListener("click", () => {
+    meditationTimerCompleted = false;
+    try {
+      localStorage.removeItem(MEDITATION_TIMER_STORAGE_KEY);
+    } catch (_) {
+      // The timer still ends for this page load when storage is unavailable.
+    }
+    elements.meditationCompletionSound.pause();
+    elements.meditationCompletionSound.currentTime = 0;
+    renderPrimaryView();
+  });
+
   elements.meditationCompletionSoundToggle.addEventListener("change", () => {
     if (elements.meditationCompletionSoundToggle.checked) {
       prepareMeditationCompletionSound();
