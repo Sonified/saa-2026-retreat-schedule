@@ -77,12 +77,14 @@ const FULL_DAY = [
 ];
 
 const SUNDAY = [
-  ["08:00", "Guided Meditation"],
-  ["08:40", "Break"],
-  ["08:50", "Meditation"],
-  ["09:30", "Break"],
-  ["09:40", "Meditation"],
-  ["10:20", "Break"],
+  ["09:00", "Guided Meditation"],
+  ["09:40", "Break"],
+  ["09:50", "Meditation"],
+  ["10:30", "Break"],
+  ["10:40", "Meditation"],
+  ["11:20", "Break"],
+  ["11:30", "Talk"],
+  ["12:30", "Close"],
 ];
 
 const SCHEDULE_PERIODS = [
