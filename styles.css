@@ -285,14 +285,20 @@ body[data-display-tone="dim"] .countdown {
   justify-content: center;
   gap: 10px;
   width: min(760px, 100%);
+  max-height: 52px;
   margin: 34px auto 0;
+  overflow: hidden;
   transition:
     opacity 240ms ease,
     transform 240ms ease,
+    max-height 360ms ease,
+    margin-top 360ms ease,
     visibility 0s linear 0s;
 }
 
 .meditation-duration-options.is-session-active {
+  max-height: 0;
+  margin-top: 0;
   visibility: hidden;
   opacity: 0;
   transform: translateY(-4px);
@@ -300,7 +306,17 @@ body[data-display-tone="dim"] .countdown {
   transition:
     opacity 240ms ease,
     transform 240ms ease,
-    visibility 0s linear 240ms;
+    max-height 360ms ease,
+    margin-top 360ms ease,
+    visibility 0s linear 360ms;
+}
+
+.meditation-timer-view h1 {
+  transition: color 240ms ease, transform 360ms ease;
+}
+
+.meditation-timer-view.has-active-session h1 {
+  transform: translateY(12px);
 }
 
 .meditation-duration-options button {
@@ -2201,7 +2217,8 @@ body[data-display-tone="dim"] .session-row.is-next::before {
   .meditation-session-drawer,
   .meditation-session-drawer.is-open,
   .meditation-duration-options,
-  .meditation-duration-options.is-session-active {
+  .meditation-duration-options.is-session-active,
+  .meditation-timer-view h1 {
     transition: none;
   }
 
