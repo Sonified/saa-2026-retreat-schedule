@@ -1926,7 +1926,7 @@ function renderMeditationTimer(now) {
     ? isPaused ? "Meditation paused" : "Meditating"
     : meditationTimerCompleted
       ? "Meditation complete"
-      : "Start a meditation";
+      : "Begin a meditation";
   elements.meditationCountdownWrap.hidden = !isActive && !meditationTimerCompleted;
   renderDuration(elements.meditationCountdown, isActive ? remaining : 0, false);
 
