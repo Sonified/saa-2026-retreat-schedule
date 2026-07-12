@@ -2013,4 +2013,8 @@ initializeToneIconControl();
 initializeFloatingLiveView();
 renderStatus();
 initializeRecordingsRefresh();
+window.addEventListener("pageshow", renderStatus);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") renderStatus();
+});
 setInterval(renderStatus, 1000);
