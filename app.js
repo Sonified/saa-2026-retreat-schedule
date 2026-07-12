@@ -158,6 +158,8 @@ let recordingsRefreshTimer = null;
 let recordingsRefreshPromise = null;
 let floatingLiveWindow = null;
 let meditationTimerCompleted = false;
+let meditationProgressAnimation = null;
+let meditationProgressAnimationEnd = null;
 
 const FLOATING_LIVE_STYLES = `
   :root {
@@ -1958,6 +1960,39 @@ function playMeditationCompletionSound(force = false) {
   });
 }
 
+function stopMeditationProgressAnimation() {
+  meditationProgressAnimation?.cancel();
+  meditationProgressAnimation = null;
+  meditationProgressAnimationEnd = null;
+}
+
+function renderMeditationProgress(timer, remaining, isActive, isPaused) {
+  const totalDuration = timer ? timer.duration * 60 * 1000 : 0;
+  const remainingProgress = isActive && totalDuration > 0
+    ? Math.min(1, Math.max(0, remaining / totalDuration))
+    : 0;
+
+  if (!isActive || isPaused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    stopMeditationProgressAnimation();
+    elements.meditationProgressFill.style.transform = `scaleX(${remainingProgress})`;
+    return;
+  }
+
+  if (meditationProgressAnimation && meditationProgressAnimationEnd === timer.end) return;
+
+  stopMeditationProgressAnimation();
+  elements.meditationProgressFill.style.transform = `scaleX(${remainingProgress})`;
+  meditationProgressAnimationEnd = timer.end;
+  meditationProgressAnimation = elements.meditationProgressFill.animate([
+    { transform: `scaleX(${remainingProgress})` },
+    { transform: "scaleX(0)" },
+  ], {
+    duration: Math.max(1, remaining),
+    easing: "linear",
+    fill: "forwards",
+  });
+}
+
 function renderMeditationTimer(now) {
   const timer = getMeditationTimer();
   const isPaused = timer?.paused === true;
@@ -1988,12 +2023,7 @@ function renderMeditationTimer(now) {
       ? "Meditation complete"
       : "Begin a meditation";
   renderDuration(elements.meditationCountdown, isActive ? remaining : 0, false);
-
-  const totalDuration = timer ? timer.duration * 60 * 1000 : 0;
-  const remainingProgress = isActive && totalDuration > 0
-    ? Math.min(1, Math.max(0, remaining / totalDuration))
-    : 0;
-  elements.meditationProgressFill.style.transform = `scaleX(${remainingProgress})`;
+  renderMeditationProgress(timer, remaining, isActive, isPaused);
   const drawerOpen = isActive || meditationTimerCompleted;
   elements.meditationSessionDrawer.classList.toggle("is-open", drawerOpen);
   elements.meditationSessionDrawer.setAttribute("aria-hidden", String(!drawerOpen));

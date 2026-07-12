@@ -457,7 +457,6 @@ body[data-display-tone="dim"] .countdown {
   background: rgba(198, 154, 99, 0.2);
   transform: scaleX(0);
   transform-origin: left center;
-  transition: transform 1s linear;
 }
 
 body[data-display-tone="dim"] .meditation-progress span {
