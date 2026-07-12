@@ -307,6 +307,36 @@ body[data-display-tone="dim"] .countdown {
   outline: none;
 }
 
+.meditation-duration-options button[aria-pressed="true"] {
+  background: rgba(198, 154, 99, 0.18);
+}
+
+.meditation-session-drawer {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    grid-template-rows 360ms ease,
+    opacity 240ms ease,
+    visibility 0s linear 360ms;
+}
+
+.meditation-session-drawer.is-open {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  opacity: 1;
+  transition:
+    grid-template-rows 360ms ease,
+    opacity 240ms ease,
+    visibility 0s linear 0s;
+}
+
+.meditation-session-drawer-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
 .meditation-timer-view .countdown-wrap {
   margin-top: 44px;
 }
@@ -322,6 +352,7 @@ body[data-display-tone="dim"] .countdown {
   position: relative;
   z-index: 1;
   margin-bottom: 16px;
+  font-size: calc(5rem - 2pt);
 }
 
 .meditation-progress {
@@ -330,7 +361,7 @@ body[data-display-tone="dim"] .countdown {
   top: 44%;
   left: 50%;
   width: min(506px, 100%);
-  height: clamp(32px, 5.5vw, 54px);
+  height: clamp(52px, 7.5vw, 76px);
   overflow: hidden;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.025);
@@ -358,8 +389,10 @@ body[data-display-tone="dim"] .meditation-progress span {
   margin-top: 42px;
 }
 
-.meditation-timer-controls[hidden] {
-  display: none;
+.meditation-timer-controls.is-inactive {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .meditation-timer-controls button {
@@ -410,6 +443,10 @@ body[data-display-tone="dim"] .meditation-duration-options button,
 body[data-display-tone="dim"] .meditation-timer-controls button {
   border-color: rgba(128, 99, 66, 0.4);
   color: var(--dim-live-text);
+}
+
+body[data-display-tone="dim"] .meditation-duration-options button[aria-pressed="true"] {
+  background: rgba(128, 99, 66, 0.18);
 }
 
 #next-title.is-lunch-free-time {
@@ -2144,6 +2181,11 @@ body[data-display-tone="dim"] .session-row.is-next::before {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  .meditation-session-drawer,
+  .meditation-session-drawer.is-open {
+    transition: none;
   }
 
   .session-row.is-active::after {

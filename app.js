@@ -129,6 +129,7 @@ const elements = {
   meditationTimerView: document.querySelector("#meditation-timer-view"),
   meditationTitle: document.querySelector("#meditation-title"),
   meditationDurationOptions: document.querySelector(".meditation-duration-options"),
+  meditationSessionDrawer: document.querySelector("#meditation-session-drawer"),
   meditationCountdownWrap: document.querySelector("#meditation-countdown-wrap"),
   meditationCountdown: document.querySelector("#meditation-countdown"),
   meditationProgress: document.querySelector(".meditation-progress"),
@@ -136,6 +137,7 @@ const elements = {
   meditationTimerControls: document.querySelector("#meditation-timer-controls"),
   meditationPauseToggle: document.querySelector("#meditation-pause-toggle"),
   meditationEnd: document.querySelector("#meditation-end"),
+  meditationSoundOption: document.querySelector("#meditation-sound-option"),
   meditationCompletionSoundToggle: document.querySelector("#meditation-completion-sound-toggle"),
   meditationCompletionSound: document.querySelector("#meditation-completion-sound"),
 };
@@ -1927,7 +1929,6 @@ function renderMeditationTimer(now) {
     : meditationTimerCompleted
       ? "Meditation complete"
       : "Begin a meditation";
-  elements.meditationCountdownWrap.hidden = !isActive && !meditationTimerCompleted;
   renderDuration(elements.meditationCountdown, isActive ? remaining : 0, false);
 
   const totalDuration = timer ? timer.duration * 60 * 1000 : 0;
@@ -1935,7 +1936,13 @@ function renderMeditationTimer(now) {
     ? Math.min(1, Math.max(0, remaining / totalDuration))
     : 0;
   elements.meditationProgressFill.style.transform = `scaleX(${remainingProgress})`;
-  elements.meditationTimerControls.hidden = !isActive;
+  const drawerOpen = isActive || meditationTimerCompleted;
+  elements.meditationSessionDrawer.classList.toggle("is-open", drawerOpen);
+  elements.meditationSessionDrawer.setAttribute("aria-hidden", String(!drawerOpen));
+  elements.meditationSessionDrawer.toggleAttribute("inert", !drawerOpen);
+  elements.meditationTimerControls.classList.toggle("is-inactive", !isActive);
+  elements.meditationPauseToggle.disabled = !isActive;
+  elements.meditationEnd.disabled = !isActive;
   elements.meditationPauseToggle.textContent = isPaused ? "Play" : "Pause";
 
   elements.meditationDurationOptions.querySelectorAll("button").forEach((button) => {

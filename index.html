@@ -176,31 +176,35 @@
               <button type="button" data-meditation-minutes="60">1 hr</button>
             </div>
 
-            <div id="meditation-countdown-wrap" class="countdown-wrap" hidden>
-              <div class="meditation-clock">
-                <div class="meditation-progress" aria-hidden="true">
-                  <span id="meditation-progress-fill"></span>
+            <div id="meditation-session-drawer" class="meditation-session-drawer" aria-hidden="true">
+              <div class="meditation-session-drawer-inner">
+                <div id="meditation-countdown-wrap" class="countdown-wrap">
+                  <div class="meditation-clock">
+                    <div class="meditation-progress" aria-hidden="true">
+                      <span id="meditation-progress-fill"></span>
+                    </div>
+                    <p id="meditation-countdown" class="countdown" role="timer" aria-atomic="true">0:00</p>
+                  </div>
+                  <p class="countdown-note">remaining</p>
                 </div>
-                <p id="meditation-countdown" class="countdown" role="timer" aria-atomic="true">0:00</p>
+
+                <div id="meditation-timer-controls" class="meditation-timer-controls">
+                  <button id="meditation-pause-toggle" type="button">Pause</button>
+                  <button id="meditation-end" type="button">End</button>
+                </div>
+
+                <label id="meditation-sound-option" class="meditation-sound-option">
+                  <input id="meditation-completion-sound-toggle" type="checkbox" checked>
+                  <span>Play completion sound</span>
+                </label>
+
+                <audio
+                  id="meditation-completion-sound"
+                  src="./assets/meditation-bell.mp3"
+                  preload="auto"
+                ></audio>
               </div>
-              <p class="countdown-note">remaining</p>
             </div>
-
-            <div id="meditation-timer-controls" class="meditation-timer-controls" hidden>
-              <button id="meditation-pause-toggle" type="button">Pause</button>
-              <button id="meditation-end" type="button">End</button>
-            </div>
-
-            <label class="meditation-sound-option">
-              <input id="meditation-completion-sound-toggle" type="checkbox" checked>
-              <span>Play completion sound</span>
-            </label>
-
-            <audio
-              id="meditation-completion-sound"
-              src="./assets/meditation-bell.mp3"
-              preload="auto"
-            ></audio>
 
             <a class="schedule-link" href="#schedule">
               See the retreat schedule
