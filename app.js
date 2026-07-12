@@ -8,6 +8,7 @@ const RECORDINGS_DOCUMENT_EXPORT_URL = "https://docs.google.com/document/d/1rkIv
 const RECORDINGS_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const RECORDINGS_REFRESH_WINDOW_MS = 60 * 1000;
 const SITE_VERSION_CHECK_INTERVAL_MS = 60 * 1000;
+const PAGE_IDS = ["timer", "schedule", "community-map"];
 const RETREAT_DATES = [
   { date: "2026-07-08", template: "full" },
   { date: "2026-07-09", template: "full" },
@@ -1630,27 +1631,13 @@ function initializeScheduleScrolling() {
     if (event.key === "ArrowUp" || event.key === "ArrowDown") {
       event.preventDefault();
 
-      const pageIds = ["timer", "schedule", "community-map"];
-      const viewportCenter = window.innerHeight / 2;
-      const currentPageIndex = pageIds.reduce((closestIndex, pageId, index) => {
-        const bounds = document.querySelector(`#${pageId}`)?.getBoundingClientRect();
-        if (!bounds) return closestIndex;
-
-        const pageCenterDistance = Math.abs(bounds.top + bounds.height / 2 - viewportCenter);
-        const closestBounds = document.querySelector(`#${pageIds[closestIndex]}`)
-          ?.getBoundingClientRect();
-        const closestDistance = closestBounds
-          ? Math.abs(closestBounds.top + closestBounds.height / 2 - viewportCenter)
-          : Number.POSITIVE_INFINITY;
-
-        return pageCenterDistance < closestDistance ? index : closestIndex;
-      }, 0);
+      const currentPageIndex = PAGE_IDS.indexOf(getVisiblePageId());
       const direction = event.key === "ArrowDown" ? 1 : -1;
       const targetPageIndex = Math.min(
-        pageIds.length - 1,
+        PAGE_IDS.length - 1,
         Math.max(0, currentPageIndex + direction)
       );
-      const targetId = pageIds[targetPageIndex];
+      const targetId = PAGE_IDS[targetPageIndex];
       if (verticalPageTarget === targetId) return;
 
       verticalPageTarget = targetId;
@@ -1865,6 +1852,7 @@ async function checkForSiteUpdate() {
 
     const updateUrl = new URL(window.location.href);
     updateUrl.searchParams.set("version", manifest.version);
+    updateUrl.hash = getVisiblePageId();
     window.location.replace(updateUrl.href);
   } catch (_) {
     // A failed update check can safely wait for the next interval.
@@ -1876,6 +1864,24 @@ function initializeSiteUpdateChecks() {
   setInterval(checkForSiteUpdate, SITE_VERSION_CHECK_INTERVAL_MS);
   elements.recordingDialog.addEventListener("close", checkForSiteUpdate);
   elements.mapFormDialog.addEventListener("close", checkForSiteUpdate);
+}
+
+function getVisiblePageId() {
+  const viewportCenter = window.innerHeight / 2;
+
+  return PAGE_IDS.reduce((closestId, pageId) => {
+    const bounds = document.querySelector(`#${pageId}`)?.getBoundingClientRect();
+    const closestBounds = document.querySelector(`#${closestId}`)?.getBoundingClientRect();
+    if (!bounds) return closestId;
+    if (!closestBounds) return pageId;
+
+    const pageDistance = Math.abs(bounds.top + bounds.height / 2 - viewportCenter);
+    const closestDistance = Math.abs(
+      closestBounds.top + closestBounds.height / 2 - viewportCenter
+    );
+
+    return pageDistance < closestDistance ? pageId : closestId;
+  }, PAGE_IDS[0]);
 }
 
 function renderRetreatDayPanel(retreatDay, dayIndex) {
