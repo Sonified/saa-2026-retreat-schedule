@@ -7,6 +7,8 @@ const RECORDINGS_CACHE_STORAGE_KEY = "retreat-recordings-cache-v1";
 const RECORDINGS_DOCUMENT_EXPORT_URL = "https://docs.google.com/document/d/1rkIvPc6x3rBdop8l-StP5VZ-79uowX2yZBSSRTDqC5E/export?format=txt";
 const RECORDINGS_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const RECORDINGS_REFRESH_WINDOW_MS = 60 * 1000;
+const SITE_VERSION = "20260712-2";
+const SITE_VERSION_CHECK_INTERVAL_MS = 60 * 1000;
 const RETREAT_DATES = [
   { date: "2026-07-08", template: "full" },
   { date: "2026-07-09", template: "full" },
@@ -1846,6 +1848,35 @@ function renderStatus() {
   syncFloatingLiveView();
 }
 
+async function checkForSiteUpdate() {
+  if (document.visibilityState === "hidden"
+    || elements.recordingDialog.open
+    || elements.mapFormDialog.open) return;
+
+  try {
+    const response = await fetch(`./version.json?check=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) return;
+
+    const manifest = await response.json();
+    if (!manifest?.version
+      || manifest.version === SITE_VERSION
+      || elements.recordingDialog.open
+      || elements.mapFormDialog.open) return;
+
+    const updateUrl = new URL(window.location.href);
+    updateUrl.searchParams.set("version", manifest.version);
+    window.location.replace(updateUrl.href);
+  } catch (_) {
+    // A failed update check can safely wait for the next interval.
+  }
+}
+
+function initializeSiteUpdateChecks() {
+  setInterval(checkForSiteUpdate, SITE_VERSION_CHECK_INTERVAL_MS);
+  elements.recordingDialog.addEventListener("close", checkForSiteUpdate);
+  elements.mapFormDialog.addEventListener("close", checkForSiteUpdate);
+}
+
 function renderRetreatDayPanel(retreatDay, dayIndex) {
   const dayEvents = events.filter((event) => event.sourceDate === retreatDay.date);
   const periods = SCHEDULE_PERIODS.map((period) => ({
@@ -2013,8 +2044,12 @@ initializeToneIconControl();
 initializeFloatingLiveView();
 renderStatus();
 initializeRecordingsRefresh();
+initializeSiteUpdateChecks();
 window.addEventListener("pageshow", renderStatus);
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") renderStatus();
+  if (document.visibilityState === "visible") {
+    renderStatus();
+    checkForSiteUpdate();
+  }
 });
 setInterval(renderStatus, 1000);
