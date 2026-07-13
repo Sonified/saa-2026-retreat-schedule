@@ -54,6 +54,7 @@ body {
 }
 
 body.has-open-recording,
+body.has-open-transcript,
 body.has-open-map-form {
   overflow: hidden;
 }
@@ -1521,7 +1522,10 @@ body[data-display-tone="dim"] .day-tab[aria-selected="true"] .day-tab-date {
   transition: background-color 80ms ease, border-color 240ms ease;
 }
 
-.session-row[data-recording-video-id] {
+.session-row[data-recording-video-id],
+.session-row[data-transcript-available],
+.session-row[data-recording-video-id] *,
+.session-row[data-transcript-available] * {
   cursor: pointer;
 }
 
@@ -1529,7 +1533,8 @@ body[data-display-tone="dim"] .day-tab[aria-selected="true"] .day-tab-date {
   padding-left: 10px;
 }
 
-.session-row[data-recording-video-id]:hover {
+.session-row[data-recording-video-id]:hover,
+.session-row[data-transcript-available]:hover {
   background-color: color-mix(in srgb, var(--text) 4%, transparent);
 }
 
@@ -1625,8 +1630,48 @@ body[data-display-tone="dim"] .session-row.is-active::after {
   transition: color 240ms ease;
 }
 
+.session-title-group {
+  display: inline-flex;
+  gap: 0.42em;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.session-transcript-link {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(184, 183, 194, 0.78);
+  font: inherit;
+  font-size: calc(0.68rem + 1pt);
+  font-weight: 450;
+  line-height: inherit;
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 42%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 80ms ease;
+}
+
+.session-transcript-link:hover,
+.session-transcript-link:focus-visible {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.session-transcript-link:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--active);
+  outline-offset: 3px;
+}
+
 .session-recording-link {
   color: var(--recording-link);
+  cursor: pointer;
   text-decoration-line: underline;
   text-decoration-color: color-mix(in srgb, currentColor 42%, transparent);
   text-decoration-thickness: 1px;
@@ -1790,6 +1835,10 @@ body[data-display-tone="dim"] .session-recording-link {
   color: #2b68bd;
 }
 
+body[data-display-tone="dim"] .session-transcript-link {
+  color: rgba(137, 135, 146, 0.78);
+}
+
 body[data-display-tone="dim"] .recording-legend {
   color: #73717c;
 }
@@ -1870,18 +1919,30 @@ body[data-display-tone="dim"] .session-row.is-next::before {
 }
 
 .recording-dialog {
-  width: min(960px, calc(100% - 32px));
-  width: min(960px, calc(100vw - 32px), calc(177.7778dvh - 164px));
+  position: relative;
+  width: min(960px, calc(100vw - 32px), calc(177.7778dvh - 64px));
   max-width: none;
   max-height: calc(100dvh - 32px);
   margin: auto;
   padding: 0;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  overflow: visible;
+  border: 0;
   border-radius: 12px;
-  background: #0d0f17;
+  background: transparent;
   color: var(--text);
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.72);
+  box-shadow: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  white-space: nowrap;
 }
 
 .recording-dialog:focus {
@@ -2001,10 +2062,36 @@ body[data-display-tone="dim"] .session-row.is-next::before {
   outline-offset: -2px;
 }
 
+.recording-dialog-close-floating {
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  bottom: calc(100% + 8px);
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  background: rgba(13, 15, 23, 0.85);
+  color: var(--countdown-text);
+  font-size: 1.25rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+}
+
+.recording-dialog-close-floating:hover,
+.recording-dialog-close-floating:focus-visible {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(13, 15, 23, 0.95);
+  color: var(--text);
+}
+
 .recording-player {
   aspect-ratio: 16 / 9;
   width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
   background: #000;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.72);
 }
 
 .recording-player-mount,
@@ -2016,6 +2103,172 @@ body[data-display-tone="dim"] .session-row.is-next::before {
 
 .recording-player iframe {
   border: 0;
+}
+
+.transcript-dialog {
+  width: min(900px, calc(100vw - 32px));
+  height: min(850px, calc(100dvh - 32px));
+  max-width: none;
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  background: #0d0f17;
+  color: var(--text);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.72);
+}
+
+.transcript-dialog:focus {
+  outline: none;
+}
+
+.transcript-dialog[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  animation: recording-dialog-enter 340ms ease-out;
+}
+
+.transcript-dialog::backdrop {
+  background: rgba(3, 4, 9, 0.84);
+  backdrop-filter: blur(5px);
+}
+
+.transcript-dialog[open]::backdrop {
+  animation: recording-backdrop-enter 260ms ease-out;
+}
+
+.transcript-dialog.is-closing {
+  pointer-events: none;
+  animation: recording-dialog-exit 260ms ease-in forwards;
+}
+
+.transcript-dialog.is-closing::backdrop {
+  animation: recording-backdrop-exit 260ms ease-in forwards;
+}
+
+.transcript-dialog-header {
+  border-bottom: 1px solid var(--line);
+}
+
+.transcript-dialog-content {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.transcript-tabs {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  padding: 0 14px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  scrollbar-width: thin;
+}
+
+.transcript-tabs[hidden] {
+  display: none;
+}
+
+.transcript-tab {
+  position: relative;
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding: 2px 10px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.84rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.transcript-tab::after {
+  position: absolute;
+  right: 10px;
+  bottom: 0;
+  left: 10px;
+  height: 2px;
+  background: transparent;
+  content: "";
+}
+
+.transcript-tab:hover,
+.transcript-tab:focus-visible,
+.transcript-tab[aria-selected="true"] {
+  color: var(--text);
+}
+
+.transcript-tab[aria-selected="true"]::after {
+  background: var(--accent);
+}
+
+.transcript-tab:focus-visible {
+  outline: 2px solid var(--active);
+  outline-offset: -4px;
+}
+
+.transcript-status {
+  align-self: center;
+  margin: 0;
+  padding: 32px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.transcript-status:empty {
+  display: none;
+}
+
+.transcript-body {
+  min-height: 0;
+  padding: 24px clamp(20px, 5vw, 56px) 56px;
+  overflow-y: auto;
+  color: #dedbe3;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1rem, 1.8vw, 1.08rem);
+  line-height: 1.72;
+  cursor: text;
+  -webkit-user-select: text;
+  user-select: text;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+  scrollbar-width: thin;
+}
+
+.transcript-body:focus-visible {
+  outline: 2px solid var(--active);
+  outline-offset: -4px;
+}
+
+.transcript-turn {
+  margin: 0 0 1.2em;
+}
+
+.transcript-turn:last-child {
+  margin-bottom: 0;
+}
+
+.transcript-speaker {
+  color: #f1c58f;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.92em;
+  font-weight: 700;
+}
+
+body[data-display-tone="dim"] .transcript-dialog {
+  color: #a3a0aa;
+}
+
+body[data-display-tone="dim"] .transcript-body {
+  color: #98959f;
+}
+
+body[data-display-tone="dim"] .transcript-speaker {
+  color: #9b7b55;
 }
 
 .session-row.is-active .session-state {
@@ -2122,9 +2375,34 @@ body[data-display-tone="dim"] .session-row.is-next::before {
   }
 
   .recording-dialog {
-    width: min(calc(100vw - 16px), calc(177.7778dvh - 132px));
+    width: min(calc(100vw - 16px), calc(177.7778dvh - 64px));
     max-height: calc(100dvh - 16px);
+  }
+
+  .recording-player {
     border-radius: 10px;
+  }
+
+  .transcript-dialog {
+    width: calc(100vw - 16px);
+    height: calc(100dvh - 16px);
+    border-radius: 10px;
+  }
+
+  .transcript-tab {
+    min-height: 46px;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .transcript-tab::after {
+    right: 8px;
+    left: 8px;
+  }
+
+  .transcript-body {
+    padding: 20px 18px 42px;
+    font-size: 1rem;
   }
 
   .map-form-dialog {
@@ -2310,6 +2588,8 @@ body[data-display-tone="dim"] .session-row.is-next::before {
 
   .recording-dialog[open],
   .recording-dialog[open]::backdrop,
+  .transcript-dialog[open],
+  .transcript-dialog[open]::backdrop,
   .map-form-dialog[open],
   .map-form-dialog[open]::backdrop {
     animation: none;

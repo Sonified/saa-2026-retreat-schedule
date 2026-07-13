@@ -60,6 +60,63 @@ const RECORDING_DOCUMENT_SECTIONS = new Map([
   ["q&a", "Q&A"],
   ["poetry", "Poetry"],
 ]);
+const Q_AND_A_TRANSCRIPT_PARTICIPANTS = {
+  1: [
+    ["Mark", "mark"],
+    ["Orion", "orion"],
+    ["Ben", "ben"],
+    ["Danette", "danette"],
+    ["Maria", "maria"],
+    ["Jesse", "jesse"],
+    ["Vomina", "vomina"],
+    ["Andrea", "andrea"],
+    ["Leslie", "leslie"],
+    ["Anna", "anna"],
+    ["Rimco", "rimco"],
+  ],
+  2: [
+    ["Lisa", "lisa"],
+    ["Leanne", "leanne"],
+    ["Finnian", "finnian"],
+    ["Jonathan", "jonathan"],
+    ["Helen", "helen"],
+    ["Robert", "robert"],
+    ["Morgana", "morgana"],
+    ["Unknown participant", "unknown-participant"],
+    ["Anna Maria", "anna-maria"],
+    ["Ray", "ray"],
+    ["Isabella", "isabella"],
+  ],
+  3: [
+    ["Jennifer", "jennifer"],
+    ["Anna", "anna"],
+    ["Nina", "nina"],
+    ["David", "david"],
+    ["Petra", "petra"],
+    ["Marco", "marco"],
+    ["Liz", "liz"],
+    ["Lisa", "lisa"],
+    ["Finnian", "finnian"],
+    ["BJ", "bj"],
+    ["Sarah", "sarah"],
+    ["John B", "john-b"],
+  ],
+  4: [
+    ["Artem", "artem"],
+    ["Carly C", "carly-c"],
+    ["Emily", "emily"],
+    ["John", "john"],
+    ["Paula", "paula"],
+    ["Kim", "kim"],
+    ["Ahmed", "ahmed"],
+    ["Kathy", "kathy"],
+    ["Jeie", "jeie"],
+    ["Jay", "jay"],
+    ["Laura", "laura"],
+    ["Brida", "brida"],
+    ["Daniel", "daniel"],
+  ],
+};
 
 const FULL_DAY = [
   ["08:00", "Guided Meditation"],
@@ -121,6 +178,12 @@ const elements = {
   recordingDialogTitle: document.querySelector("#recording-dialog-title"),
   recordingDialogClose: document.querySelector("#recording-dialog-close"),
   recordingPlayerMount: document.querySelector("#recording-player-mount"),
+  transcriptDialog: document.querySelector("#transcript-dialog"),
+  transcriptDialogTitle: document.querySelector("#transcript-dialog-title"),
+  transcriptDialogClose: document.querySelector("#transcript-dialog-close"),
+  transcriptTabs: document.querySelector("#transcript-tabs"),
+  transcriptStatus: document.querySelector("#transcript-status"),
+  transcriptBody: document.querySelector("#transcript-body"),
   mapFormLink: document.querySelector(".map-form-link"),
   mapFormDialog: document.querySelector("#map-form-dialog"),
   mapFormDialogClose: document.querySelector("#map-form-dialog-close"),
@@ -1132,6 +1195,55 @@ function getYouTubeVideoId(url) {
   return null;
 }
 
+function getTranscriptEntry(sourceDate, sessionName) {
+  const dayIndex = RETREAT_DATES.findIndex((retreatDay) => retreatDay.date === sourceDate);
+  if (dayIndex < 0) return null;
+
+  const dayNumber = dayIndex + 1;
+  if (sessionName === "Guided Meditation") {
+    return {
+      dayNumber,
+      sessionName,
+      files: [{
+        label: "Guided Meditation",
+        path: `./transcripts/guided-meditations/day-${dayNumber}-guided-meditation.txt`,
+      }],
+    };
+  }
+
+  if (sessionName === "Talk") {
+    return {
+      dayNumber,
+      sessionName,
+      files: [{
+        label: "Talk",
+        path: `./transcripts/talks/day-${dayNumber}-talk.txt`,
+      }],
+    };
+  }
+
+  if (sessionName !== "Q&A") return null;
+  const participants = Q_AND_A_TRANSCRIPT_PARTICIPANTS[dayNumber];
+  if (!participants) return null;
+
+  return {
+    dayNumber,
+    sessionName,
+    files: participants.map(([label, slug], index) => ({
+      label,
+      path: `./transcripts/q-and-a/day-${dayNumber}/q-and-a-${index + 1}-${slug}.txt`,
+    })),
+  };
+}
+
+function getVersionedTranscriptUrl(path) {
+  const transcriptUrl = new URL(path, window.location.href);
+  const pageUrl = new URL(window.location.href);
+  const version = pageUrl.searchParams.get("v") || pageUrl.searchParams.get("version");
+  if (version) transcriptUrl.searchParams.set("v", version);
+  return transcriptUrl.href;
+}
+
 let youtubeIframeApiPromise = null;
 
 function loadYouTubeIframeApi() {
@@ -1376,6 +1488,7 @@ function initializeRecordingDialog() {
   };
 
   elements.scheduleList.addEventListener("click", (event) => {
+    if (event.target.closest(".session-transcript-link")) return;
     const row = event.target.closest(".session-row[data-recording-video-id]");
     const link = row?.querySelector(".session-recording-link");
     if (!link || typeof elements.recordingDialog.showModal !== "function") return;
@@ -1507,6 +1620,235 @@ function initializeRecordingDialog() {
   });
 
   window.addEventListener("pagehide", saveProgress);
+}
+
+function initializeTranscriptDialog() {
+  let trigger = null;
+  let restoreTriggerFocus = false;
+  let closeTimer = null;
+  let activeEntry = null;
+  let activeFileIndex = -1;
+  let activePath = null;
+  let loadRequestId = 0;
+  const transcriptCache = new Map();
+  const scrollPositions = new Map();
+
+  const closeDialog = () => {
+    if (!elements.transcriptDialog.open
+      || elements.transcriptDialog.classList.contains("is-closing")) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      elements.transcriptDialog.close();
+      return;
+    }
+
+    elements.transcriptDialog.classList.add("is-closing");
+    closeTimer = setTimeout(() => elements.transcriptDialog.close(), 260);
+  };
+
+  const fetchTranscript = (path) => {
+    if (!transcriptCache.has(path)) {
+      const request = fetch(getVersionedTranscriptUrl(path)).then((response) => {
+        if (!response.ok) throw new Error(`Transcript request failed: ${response.status}`);
+        return response.text();
+      }).catch((error) => {
+        transcriptCache.delete(path);
+        throw error;
+      });
+      transcriptCache.set(path, request);
+    }
+
+    return transcriptCache.get(path);
+  };
+
+  const renderTranscriptText = (transcriptText) => {
+    const normalizedText = transcriptText
+      .replace(/\r/g, "")
+      .replace(/\s*>>\s*/g, " ")
+      .trimEnd();
+    const lines = normalizedText.split("\n");
+    const transcriptBody = lines.slice(5).join("\n").trim();
+    const paragraphs = transcriptBody.split(/\n{2,}/).filter(Boolean);
+    const fragment = document.createDocumentFragment();
+
+    paragraphs.forEach((paragraph) => {
+      const turn = document.createElement("p");
+      turn.className = "transcript-turn";
+      const speakerMatch = (activeEntry?.sessionName === "Q&A" || activeEntry?.sessionName === "Talk")
+        ? paragraph.match(/^([^:\n]{1,50}):\s+([\s\S]*)$/)
+        : null;
+
+      if (speakerMatch) {
+        const speaker = document.createElement("strong");
+        speaker.className = "transcript-speaker";
+        speaker.textContent = `${speakerMatch[1]}:`;
+        turn.append(speaker, document.createTextNode(` ${speakerMatch[2]}`));
+      } else {
+        turn.textContent = paragraph.replace(/\s*\n\s*/g, " ");
+      }
+
+      fragment.append(turn);
+    });
+
+    elements.transcriptBody.replaceChildren(fragment);
+  };
+
+  const setSelectedTab = (fileIndex) => {
+    elements.transcriptTabs.querySelectorAll("[role=tab]").forEach((tab, index) => {
+      const isSelected = index === fileIndex;
+      tab.setAttribute("aria-selected", String(isSelected));
+      tab.tabIndex = isSelected ? 0 : -1;
+    });
+  };
+
+  const showTranscriptFile = async (fileIndex, shouldFocusTab = false) => {
+    const file = activeEntry?.files[fileIndex];
+    if (!file) return;
+
+    if (activePath) {
+      scrollPositions.set(activePath, elements.transcriptBody.scrollTop);
+    }
+
+    const requestId = ++loadRequestId;
+    activeFileIndex = fileIndex;
+    activePath = file.path;
+    setSelectedTab(fileIndex);
+    elements.transcriptStatus.textContent = "Loading transcript…";
+    elements.transcriptBody.hidden = true;
+    elements.transcriptBody.replaceChildren();
+
+    const selectedTab = elements.transcriptTabs.querySelectorAll("[role=tab]")[fileIndex];
+    if (selectedTab) {
+      selectedTab.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
+      if (shouldFocusTab) selectedTab.focus({ preventScroll: true });
+      elements.transcriptBody.setAttribute("aria-labelledby", selectedTab.id);
+    } else {
+      elements.transcriptBody.removeAttribute("aria-labelledby");
+    }
+
+    try {
+      const transcriptText = await fetchTranscript(file.path);
+      if (requestId !== loadRequestId || !elements.transcriptDialog.open) return;
+
+      renderTranscriptText(transcriptText);
+      elements.transcriptStatus.textContent = "";
+      elements.transcriptBody.hidden = false;
+      elements.transcriptBody.scrollTop = scrollPositions.get(file.path) || 0;
+    } catch (_) {
+      if (requestId !== loadRequestId || !elements.transcriptDialog.open) return;
+      elements.transcriptStatus.textContent = "The transcript could not be loaded. Please try again.";
+      elements.transcriptBody.hidden = true;
+    }
+  };
+
+  const buildParticipantTabs = () => {
+    const hasMultipleFiles = activeEntry.files.length > 1;
+    elements.transcriptTabs.hidden = !hasMultipleFiles;
+    elements.transcriptTabs.replaceChildren();
+    if (!hasMultipleFiles) return;
+
+    const fragment = document.createDocumentFragment();
+    activeEntry.files.forEach((file, index) => {
+      const tab = document.createElement("button");
+      tab.id = `transcript-tab-${activeEntry.dayNumber}-${index + 1}`;
+      tab.className = "transcript-tab";
+      tab.type = "button";
+      tab.setAttribute("role", "tab");
+      tab.dataset.transcriptIndex = String(index);
+      tab.setAttribute("aria-controls", "transcript-body");
+      tab.setAttribute("aria-selected", "false");
+      tab.tabIndex = -1;
+      tab.textContent = file.label;
+      fragment.append(tab);
+    });
+    elements.transcriptTabs.append(fragment);
+  };
+
+  elements.scheduleList.addEventListener("click", (event) => {
+    const transcriptRow = event.target.closest(".session-row[data-transcript-available]");
+    const transcriptLink = event.target.closest(".session-transcript-link")
+      || (!transcriptRow?.dataset.recordingVideoId
+        ? transcriptRow?.querySelector(".session-transcript-link")
+        : null);
+    if (!transcriptLink || typeof elements.transcriptDialog.showModal !== "function") return;
+
+    const entry = getTranscriptEntry(
+      transcriptLink.dataset.transcriptDate,
+      transcriptLink.dataset.transcriptSession
+    );
+    if (!entry) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    trigger = transcriptLink;
+    restoreTriggerFocus = event.detail === 0;
+    activeEntry = entry;
+    activeFileIndex = -1;
+    activePath = null;
+    elements.transcriptDialogTitle.textContent = `Day ${entry.dayNumber}: ${entry.sessionName} transcript`;
+    buildParticipantTabs();
+    document.body.classList.add("has-open-transcript");
+    elements.transcriptDialog.showModal();
+    elements.transcriptDialog.focus({ preventScroll: true });
+    showTranscriptFile(0);
+  });
+
+  elements.transcriptTabs.addEventListener("click", (event) => {
+    const tab = event.target.closest("[role=tab]");
+    if (!tab) return;
+    showTranscriptFile(Number(tab.dataset.transcriptIndex));
+  });
+
+  elements.transcriptTabs.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const finalIndex = activeEntry.files.length - 1;
+    let nextIndex = activeFileIndex;
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = finalIndex;
+    if (event.key === "ArrowLeft") nextIndex = activeFileIndex <= 0 ? finalIndex : activeFileIndex - 1;
+    if (event.key === "ArrowRight") nextIndex = activeFileIndex >= finalIndex ? 0 : activeFileIndex + 1;
+    showTranscriptFile(nextIndex, true);
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (!elements.transcriptDialog.open || event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closeDialog();
+  }, { capture: true });
+
+  elements.transcriptDialogClose.form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    closeDialog();
+  });
+  elements.transcriptDialog.addEventListener("click", (event) => {
+    if (event.target === elements.transcriptDialog) closeDialog();
+  });
+  elements.transcriptDialog.addEventListener("close", () => {
+    if (activePath) scrollPositions.set(activePath, elements.transcriptBody.scrollTop);
+    loadRequestId += 1;
+    clearTimeout(closeTimer);
+    closeTimer = null;
+    elements.transcriptDialog.classList.remove("is-closing");
+    elements.transcriptTabs.replaceChildren();
+    elements.transcriptTabs.hidden = true;
+    elements.transcriptStatus.textContent = "";
+    elements.transcriptBody.replaceChildren();
+    elements.transcriptBody.hidden = false;
+    elements.transcriptBody.removeAttribute("aria-labelledby");
+    document.body.classList.remove("has-open-transcript");
+    activeEntry = null;
+    activeFileIndex = -1;
+    activePath = null;
+    if (restoreTriggerFocus) {
+      trigger?.focus();
+    } else {
+      trigger?.blur();
+    }
+    trigger = null;
+    restoreTriggerFocus = false;
+  });
 }
 
 function initializeMapFormDialog() {
@@ -2158,6 +2500,7 @@ function initializeMeditationTimer() {
 async function checkForSiteUpdate() {
   if (document.visibilityState === "hidden"
     || elements.recordingDialog.open
+    || elements.transcriptDialog.open
     || elements.mapFormDialog.open
     || isMeditationTimerActive()) return;
 
@@ -2168,6 +2511,7 @@ async function checkForSiteUpdate() {
     const manifest = await response.json();
     if (!manifest?.version
       || elements.recordingDialog.open
+      || elements.transcriptDialog.open
       || elements.mapFormDialog.open
       || isMeditationTimerActive()) return;
 
@@ -2201,6 +2545,7 @@ function initializeSiteUpdateChecks() {
   checkForSiteUpdate();
   setInterval(checkForSiteUpdate, SITE_VERSION_CHECK_INTERVAL_MS);
   elements.recordingDialog.addEventListener("close", checkForSiteUpdate);
+  elements.transcriptDialog.addEventListener("close", checkForSiteUpdate);
   elements.mapFormDialog.addEventListener("close", checkForSiteUpdate);
 }
 
@@ -2268,6 +2613,8 @@ function renderRetreatDayPanel(retreatDay, dayIndex) {
       const recordingVideoId = event.recordingUrl
         ? getYouTubeVideoId(event.recordingUrl)
         : null;
+      const transcriptEntry = getTranscriptEntry(event.sourceDate, event.name);
+      const escapedSessionName = event.name.replace(/&/g, "&amp;");
       const sessionName = event.recordingUrl
         ? `
           <a
@@ -2280,7 +2627,17 @@ function renderRetreatDayPanel(retreatDay, dayIndex) {
             <span>${event.name}</span>
           </a>
         `
-        : `<div class="session-name">${event.name}</div>`;
+        : `<span class="session-name">${event.name}</span>`;
+      const transcriptLink = transcriptEntry
+        ? `<button
+            class="session-transcript-link"
+            type="button"
+            data-transcript-date="${event.sourceDate}"
+            data-transcript-session="${escapedSessionName}"
+            aria-label="Read the Day ${transcriptEntry.dayNumber} ${escapedSessionName} transcript"
+          >(Transcript)</button>`
+        : "";
+      const sessionTitle = `<span class="session-title-group">${sessionName}${transcriptLink}</span>`;
       const recordedMarker = event.isRecordedSession && !event.recordingUrl
         ? '<span class="session-recorded-marker is-visible" role="img" aria-label="Recorded"></span>'
         : '<span class="session-recorded-marker" aria-hidden="true"></span>';
@@ -2296,12 +2653,15 @@ function renderRetreatDayPanel(retreatDay, dayIndex) {
       const recordingData = recordingVideoId
         ? ` data-recording-video-id="${recordingVideoId}"`
         : "";
+      const transcriptData = transcriptEntry
+        ? ' data-transcript-available="true"'
+        : "";
 
-      return `<div class="session-row" data-start="${event.start.toISOString()}"${recordingData}>
+      return `<div class="session-row" data-start="${event.start.toISOString()}"${recordingData}${transcriptData}>
         <time class="session-time" datetime="${event.start.toISOString()}">${formatTime(event.start)}</time>
         ${recordedMarker}
         <div class="session-detail">
-          ${sessionName}
+          ${sessionTitle}
           <span class="session-state" aria-hidden="true"></span>
           <span class="session-row-countdown" aria-hidden="true" hidden></span>
           ${recordingResume}
@@ -2417,6 +2777,7 @@ function updateScheduleHighlights(status, now = new Date()) {
 
 initializeScheduleScrolling();
 initializeRecordingDialog();
+initializeTranscriptDialog();
 initializeMapFormDialog();
 initializeFullscreenToggle();
 initializeToneIconControl();

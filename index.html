@@ -377,24 +377,61 @@
       aria-labelledby="recording-dialog-title"
       tabindex="-1"
     >
-      <div class="recording-dialog-header">
-        <h2 id="recording-dialog-title">Session recording</h2>
+      <h2 id="recording-dialog-title" class="sr-only">Session recording</h2>
+      <form method="dialog">
+        <button
+          id="recording-dialog-close"
+          class="recording-dialog-close recording-dialog-close-floating"
+          type="submit"
+          aria-label="Close video"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      </form>
+
+      <div class="recording-player">
+        <div id="recording-player-mount" class="recording-player-mount"></div>
+      </div>
+
+    </dialog>
+
+    <dialog
+      id="transcript-dialog"
+      class="transcript-dialog"
+      aria-labelledby="transcript-dialog-title"
+      tabindex="-1"
+    >
+      <div class="recording-dialog-header transcript-dialog-header">
+        <h2 id="transcript-dialog-title">Session transcript</h2>
         <form method="dialog">
           <button
-            id="recording-dialog-close"
+            id="transcript-dialog-close"
             class="recording-dialog-close"
             type="submit"
-            aria-label="Close video"
+            aria-label="Close transcript"
           >
             <span aria-hidden="true">×</span>
           </button>
         </form>
       </div>
 
-      <div class="recording-player">
-        <div id="recording-player-mount" class="recording-player-mount"></div>
+      <div class="transcript-dialog-content">
+        <div
+          id="transcript-tabs"
+          class="transcript-tabs"
+          role="tablist"
+          aria-label="Q&amp;A participants"
+          hidden
+        ></div>
+        <p id="transcript-status" class="transcript-status" role="status" aria-live="polite"></p>
+        <article
+          id="transcript-body"
+          class="transcript-body"
+          role="tabpanel"
+          aria-label="Transcript text"
+          tabindex="0"
+        ></article>
       </div>
-
     </dialog>
 
     <dialog
