@@ -1674,9 +1674,7 @@ function initializeTranscriptDialog() {
     paragraphs.forEach((paragraph) => {
       const turn = document.createElement("p");
       turn.className = "transcript-turn";
-      const speakerMatch = (activeEntry?.sessionName === "Q&A" || activeEntry?.sessionName === "Talk")
-        ? paragraph.match(/^([^:\n]{1,50}):\s+([\s\S]*)$/)
-        : null;
+      const speakerMatch = paragraph.match(/^([^:\n]{1,50}):\s+([\s\S]*)$/);
 
       if (speakerMatch) {
         const speaker = document.createElement("strong");
