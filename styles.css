@@ -1919,7 +1919,6 @@ body[data-display-tone="dim"] .session-row.is-next::before {
 }
 
 .recording-dialog {
-  position: relative;
   width: min(960px, calc(100vw - 32px), calc(177.7778dvh - 64px));
   max-width: none;
   max-height: calc(100dvh - 32px);
